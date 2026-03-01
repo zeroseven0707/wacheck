@@ -488,74 +488,27 @@ app.post('/api/check', requireAuth, async (req, res) => {
             bio: '',
             isBusiness: false,
             isVerified: false,
-            isVerifiedGreen: false,
-            isVerifiedBlue: false,
-            isMetaBusiness: false,
-            isEnterprise: false,
             businessInfo: null,
             profilePicture: null,
-            profilePictureHD: null,
-            lastSeen: null,
-            pushName: '',
-            verifiedName: '',
-            deviceInfo: null,
-            privacySettings: {},
-            likelyOfficial: false,
-            officialScore: 0,
-            detectionMethod: null
+            pushName: ''
         };
 
         // 1. Ambil Bio/Status
         try {
-            console.log(`[CHECK] Fetching status for ${formattedNumber}`);
             const status = await session.sock.fetchStatus(jid);
             responseData.bio = status?.status || '';
-            console.log(`[CHECK] Bio: ${responseData.bio ? 'Found' : 'Empty'}`);
         } catch (e) {
-            console.log(`[CHECK] Bio not available: ${e.message}`);
+            // Bio not available
         }
 
         // 2. Ambil Business Profile (jika ada)
         try {
-            console.log(`[CHECK] Fetching business profile for ${formattedNumber}`);
             const businessProfile = await session.sock.getBusinessProfile(jid);
             
             if (businessProfile) {
                 responseData.isBusiness = true;
-                
-                // Log semua field untuk debugging
-                console.log(`[CHECK] Full business profile:`, JSON.stringify(businessProfile, null, 2));
-                
-                // Deteksi level verifikasi
-                const verifiedLevel = businessProfile.verified_level || 'none';
-                
-                // Cek juga field alternatif yang mungkin ada
-                const isVerifiedAlt = businessProfile.is_verified || false;
-                const verifiedName = businessProfile.verified_name || null;
-                
-                console.log(`[CHECK] Verification details:`, {
-                    verified_level: verifiedLevel,
-                    is_verified: isVerifiedAlt,
-                    verified_name: verifiedName
-                });
-                
-                // Centang Hijau = verified
-                // Centang Biru = official
-                responseData.isVerifiedGreen = verifiedLevel === 'verified';
-                responseData.isVerifiedBlue = verifiedLevel === 'official' || verifiedLevel === 'blue_verified';
-                
-                // Jika ada verified_name, kemungkinan besar ini official/blue
-                if (verifiedName && !responseData.isVerifiedBlue) {
-                    console.log(`[CHECK] Has verified_name, marking as blue verified`);
-                    responseData.isVerifiedBlue = true;
-                }
-                
-                // Backward compatibility
-                responseData.isVerified = verifiedLevel === 'verified' || verifiedLevel === 'official' || isVerifiedAlt;
-                responseData.isEnterprise = responseData.isVerifiedBlue;
-                
-                // Meta Verified (berbeda dari verified biasa)
-                responseData.isMetaBusiness = false; // Ini untuk Meta Verified berbayar (jarang)
+                responseData.isVerified = businessProfile.verified_level === 'verified' || 
+                                         businessProfile.verified_level === 'official';
                 
                 // Extract detailed business info
                 responseData.businessInfo = {
@@ -564,25 +517,12 @@ app.post('/api/check', requireAuth, async (req, res) => {
                     email: businessProfile.email || '',
                     website: businessProfile.website || [],
                     address: businessProfile.address || '',
-                    verifiedLevel: verifiedLevel,
-                    verifiedName: verifiedName,
-                    isVerified: isVerifiedAlt,
                     catalogCount: businessProfile.catalog_count || 0,
                     hasCatalog: (businessProfile.catalog_count || 0) > 0
                 };
-                
-                console.log(`[CHECK] Business profile found:`, {
-                    category: responseData.businessInfo.category,
-                    verifiedLevel: verifiedLevel,
-                    verifiedGreen: responseData.isVerifiedGreen,
-                    verifiedBlue: responseData.isVerifiedBlue,
-                    verifiedName: verifiedName,
-                    catalog: responseData.businessInfo.hasCatalog,
-                    catalogCount: responseData.businessInfo.catalogCount
-                });
             }
         } catch (e) {
-            console.log(`[CHECK] Not a business account or profile unavailable: ${e.message}`);
+            // Not a business account
         }
         
         // 2.5. Coba query langsung untuk mendapatkan info verifikasi
@@ -622,191 +562,23 @@ app.post('/api/check', requireAuth, async (req, res) => {
             console.log(`[CHECK] Direct query failed: ${e.message}`);
         }
 
-        // 3. Ambil Profile Picture URL (normal & HD)
+        // 3. Ambil Profile Picture URL
         try {
             const ppUrl = await session.sock.profilePictureUrl(jid, 'image');
             responseData.profilePicture = ppUrl;
-            console.log(`[CHECK] Profile picture: Found`);
-            
-            // Try to get HD version
-            try {
-                const ppUrlHD = await session.sock.profilePictureUrl(jid, 'preview');
-                responseData.profilePictureHD = ppUrlHD;
-            } catch (e) {
-                console.log(`[CHECK] HD profile picture: Not available`);
-            }
         } catch (e) {
-            console.log(`[CHECK] Profile picture: Not available`);
+            // Profile picture not available
         }
 
-        // 4. Ambil info tambahan dari contact/store
+        // 4. Ambil Push Name dari store
         try {
-            // Baileys menyimpan contact di store, bukan method getContact
             const contact = session.sock.store?.contacts?.[jid];
-            if (contact) {
-                if (contact.notify) responseData.pushName = contact.notify;
-                if (contact.verifiedName) {
-                    responseData.verifiedName = contact.verifiedName;
-                    // Jika ada verifiedName di contact, ini kemungkinan besar official/blue
-                    if (!responseData.isVerifiedBlue) {
-                        console.log(`[CHECK] Found verifiedName in contact, marking as blue verified`);
-                        responseData.isVerifiedBlue = true;
-                        responseData.isEnterprise = true;
-                    }
-                }
-                if (contact.name) responseData.contactName = contact.name;
-                
-                // Log contact info untuk debugging
-                console.log(`[CHECK] Contact info:`, {
-                    notify: contact.notify,
-                    verifiedName: contact.verifiedName,
-                    name: contact.name,
-                    fullContact: JSON.stringify(contact, null, 2)
-                });
-            } else {
-                console.log(`[CHECK] Contact not found in store`);
+            if (contact?.notify) {
+                responseData.pushName = contact.notify;
             }
         } catch (e) {
-            console.log(`[CHECK] Contact info not available: ${e.message}`);
+            // Contact info not available
         }
-
-        // 5. Ambil informasi presence (online/offline/typing)
-        try {
-            await session.sock.presenceSubscribe(jid);
-            // Note: presence updates come via events, not direct query
-        } catch (e) {
-            console.log(`[CHECK] Presence subscription failed`);
-        }
-        
-        // 6. Cek metadata dari store untuk info verifikasi tambahan
-        try {
-            // Baileys menyimpan metadata di store
-            const metadata = session.sock.store?.contacts?.[jid];
-            if (metadata) {
-                console.log(`[CHECK] Store metadata:`, JSON.stringify(metadata, null, 2));
-                
-                // Cek field verifikasi di metadata
-                if (metadata.verifiedName && !responseData.isVerifiedBlue) {
-                    console.log(`[CHECK] Found verifiedName in store metadata`);
-                    responseData.isVerifiedBlue = true;
-                    responseData.isEnterprise = true;
-                    responseData.verifiedName = metadata.verifiedName;
-                }
-            }
-        } catch (e) {
-            console.log(`[CHECK] Store metadata check failed: ${e.message}`);
-        }
-
-        // 7. Cek privacy settings (best effort)
-        try {
-            responseData.privacySettings = {
-                profilePicture: responseData.profilePicture ? 'visible' : 'hidden',
-                status: responseData.bio ? 'visible' : 'hidden'
-            };
-        } catch (e) {
-            console.log(`[CHECK] Privacy settings check failed`);
-        }
-        
-        // 8. Heuristic detection untuk Official/Blue Check
-        // Jika Baileys tidak mengembalikan verified_level dengan benar,
-        // kita bisa deteksi berdasarkan karakteristik akun official
-        if (responseData.isBusiness && !responseData.isVerifiedBlue && !responseData.isVerifiedGreen) {
-            let officialScore = 0;
-            let indicators = [];
-            
-            // Akun official biasanya punya:
-            // 1. Business hours (jam operasional) - STRONG indicator
-            // 2. Address lengkap
-            // 3. Website
-            // 4. Description lengkap
-            // 5. Category yang jelas
-            
-            const profile = responseData.businessInfo;
-            
-            // Cek business_hours dari raw businessProfile
-            let hasBusinessHours = false;
-            try {
-                const rawProfile = await session.sock.getBusinessProfile(jid);
-                if (rawProfile && rawProfile.business_hours) {
-                    hasBusinessHours = true;
-                    officialScore += 3; // Business hours adalah indikator kuat
-                    indicators.push('business_hours');
-                    console.log(`[CHECK] ✓ Has business hours (strong indicator)`);
-                }
-            } catch (e) {
-                // Ignore
-            }
-            
-            if (profile) {
-                if (profile.address && profile.address.length > 20) {
-                    officialScore += 2;
-                    indicators.push('address');
-                    console.log(`[CHECK] ✓ Has detailed address`);
-                }
-                if (profile.website && profile.website.length > 0) {
-                    officialScore += 2;
-                    indicators.push('website');
-                    console.log(`[CHECK] ✓ Has website`);
-                }
-                if (profile.description && profile.description.length > 30) {
-                    officialScore += 1;
-                    indicators.push('description');
-                    console.log(`[CHECK] ✓ Has detailed description`);
-                }
-                if (profile.category && profile.category !== 'Other') {
-                    officialScore += 1;
-                    indicators.push('category');
-                    console.log(`[CHECK] ✓ Has category`);
-                }
-                if (profile.email) {
-                    officialScore += 1;
-                    indicators.push('email');
-                    console.log(`[CHECK] ✓ Has email`);
-                }
-            }
-            
-            console.log(`[CHECK] Official detection score: ${officialScore}/10`);
-            console.log(`[CHECK] Indicators found: ${indicators.join(', ')}`);
-            
-            // Jika score >= 6, kemungkinan BESAR ini official account
-            // Terutama jika ada business_hours
-            if (officialScore >= 6 || (hasBusinessHours && officialScore >= 5)) {
-                console.log(`[CHECK] ⭐ HIGH CONFIDENCE: This is likely an Official/Blue Check account`);
-                
-                // AUTO-ENABLE: Mark sebagai blue verified
-                responseData.isVerifiedBlue = true;
-                responseData.isEnterprise = true;
-                responseData.isVerified = true;
-                responseData.detectionMethod = 'heuristic';
-                responseData.officialScore = officialScore;
-                
-                console.log(`[CHECK] ✅ Marked as Blue Verified (heuristic detection)`);
-            } else if (officialScore >= 4) {
-                console.log(`[CHECK] ⚠️ MEDIUM CONFIDENCE: Might be official account`);
-                responseData.likelyOfficial = true;
-                responseData.officialScore = officialScore;
-            }
-        }
-
-        console.log(`[CHECK] Final data for ${formattedNumber}:`, {
-            registered: true,
-            hasBio: !!responseData.bio,
-            isBusiness: responseData.isBusiness,
-            isVerified: responseData.isVerified,
-            isVerifiedGreen: responseData.isVerifiedGreen,
-            isVerifiedBlue: responseData.isVerifiedBlue,
-            isEnterprise: responseData.isEnterprise,
-            verifiedName: responseData.verifiedName || 'N/A',
-            verifiedLevel: responseData.businessInfo?.verifiedLevel || 'N/A',
-            detectionMethod: responseData.detectionMethod || 'api',
-            officialScore: responseData.officialScore,
-            likelyOfficial: responseData.likelyOfficial,
-            hasCatalog: responseData.businessInfo?.hasCatalog || false,
-            catalogCount: responseData.businessInfo?.catalogCount || 0,
-            hasProfilePicture: !!responseData.profilePicture,
-            hasHDPicture: !!responseData.profilePictureHD,
-            pushName: responseData.pushName || 'N/A'
-        });
 
         res.json(responseData);
 

@@ -21,10 +21,7 @@ let stats = {
     bio: 0,
     business: 0,
     verified: 0,
-    metaBusiness: 0,
-    enterprise: 0,
-    hasPhoto: 0,
-    privacyHidden: 0
+    hasPhoto: 0
 };
 
 // ============================================
@@ -427,19 +424,16 @@ async function startScan() {
         registered: 0, 
         bio: 0, 
         business: 0, 
-        verified: 0, 
-        metaBusiness: 0,
-        enterprise: 0,
-        hasPhoto: 0,
-        privacyHidden: 0
+        verified: 0,
+        hasPhoto: 0
     };
     updateStats();
     
     const total = currentNumbers.length;
     let processed = 0;
     
-    // Process in batches of 30 for better performance
-    const BATCH_SIZE = 30;
+    // Process in batches of 20 for optimal speed
+    const BATCH_SIZE = 20;
     const batches = [];
     
     for (let i = 0; i < currentNumbers.length; i += BATCH_SIZE) {
@@ -479,9 +473,9 @@ async function startScan() {
         document.getElementById('progressPercent').innerText = `${percent}%`;
         document.getElementById('currentNumber').innerText = `Processed: ${processed}/${total}`;
         
-        // Small delay between batches to avoid overwhelming the server
+        // Delay 1 second between batches
         if (batchIndex < batches.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
     }
     
@@ -519,38 +513,21 @@ async function processNumber(number, current, total) {
         if (data.bio) stats.bio++;
         if (data.isBusiness) stats.business++;
         if (data.isVerified) stats.verified++;
-        if (data.isMetaBusiness) stats.metaBusiness++;
-        if (data.isVerifiedBlue) stats.enterprise++; // Centang Biru
         if (data.profilePicture) stats.hasPhoto++;
-        if (data.privacySettings && (data.privacySettings.profilePicture === 'hidden' || data.privacySettings.status === 'hidden')) {
-            stats.privacyHidden++;
-        }
         
         // Update stats display
         updateStats();
         
         // Create badges
         const badges = [];
-        if (data.isMetaBusiness) {
-            badges.push('<span class="px-2 py-1 rounded bg-yellow-500/20 text-yellow-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-certificate"></i> Meta Verified</span>');
-        }
-        if (data.isVerifiedBlue) {
-            badges.push('<span class="px-2 py-1 rounded bg-blue-500/20 text-blue-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> Official (Blue)</span>');
-            if (data.detectionMethod === 'heuristic') {
-                badges.push('<span class="px-2 py-1 rounded bg-cyan-500/20 text-cyan-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-brain"></i> AI Detected</span>');
-            }
-        }
-        if (data.isVerifiedGreen && !data.isVerifiedBlue) {
-            badges.push('<span class="px-2 py-1 rounded bg-green-500/20 text-green-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> Verified (Green)</span>');
+        if (data.isVerified) {
+            badges.push('<span class="px-2 py-1 rounded bg-green-500/20 text-green-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> Verified</span>');
         }
         if (data.isBusiness) {
             badges.push('<span class="px-2 py-1 rounded bg-brand-purple/20 text-brand-purple text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-briefcase"></i> Business</span>');
         }
         if (data.businessInfo?.hasCatalog) {
             badges.push(`<span class="px-2 py-1 rounded bg-blue-500/20 text-blue-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-store"></i> Catalog (${data.businessInfo.catalogCount})</span>`);
-        }
-        if (data.verifiedName) {
-            badges.push(`<span class="px-2 py-1 rounded bg-cyan-500/20 text-cyan-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-award"></i> Official Name</span>`);
         }
         
         // Business info section
@@ -828,9 +805,7 @@ function updateStats() {
         statBio: stats.bio || 0,
         statBusiness: stats.business || 0,
         statVerified: stats.verified || 0,
-        statEnterprise: stats.enterprise || 0,
-        statHasPhoto: stats.hasPhoto || 0,
-        statPrivacyHidden: stats.privacyHidden || 0
+        statHasPhoto: stats.hasPhoto || 0
     };
     
     // Update each element safely
@@ -838,8 +813,6 @@ function updateStats() {
         const el = document.getElementById(id);
         if (el) {
             el.innerText = elements[id];
-        } else {
-            console.warn(`[STATS] Element #${id} not found`);
         }
     });
 }
