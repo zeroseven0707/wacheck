@@ -499,7 +499,10 @@ app.post('/api/check', requireAuth, async (req, res) => {
             pushName: '',
             verifiedName: '',
             deviceInfo: null,
-            privacySettings: {}
+            privacySettings: {},
+            likelyOfficial: false,
+            officialScore: 0,
+            detectionMethod: null
         };
 
         // 1. Ambil Bio/Status
@@ -581,6 +584,43 @@ app.post('/api/check', requireAuth, async (req, res) => {
         } catch (e) {
             console.log(`[CHECK] Not a business account or profile unavailable: ${e.message}`);
         }
+        
+        // 2.5. Coba query langsung untuk mendapatkan info verifikasi
+        try {
+            console.log(`[CHECK] Attempting direct query for verification info`);
+            
+            // Query contact info yang lebih lengkap
+            const contactQuery = await session.sock.query({
+                tag: 'iq',
+                attrs: {
+                    to: jid,
+                    type: 'get',
+                    xmlns: 'w:biz'
+                },
+                content: [{
+                    tag: 'business_profile',
+                    attrs: {}
+                }]
+            });
+            
+            console.log(`[CHECK] Direct query result:`, JSON.stringify(contactQuery, null, 2));
+            
+            // Parse hasil query
+            if (contactQuery && contactQuery.attrs) {
+                const verifiedLevel = contactQuery.attrs.v || contactQuery.attrs.verified_level;
+                if (verifiedLevel) {
+                    console.log(`[CHECK] Found verified_level from query: ${verifiedLevel}`);
+                    if (verifiedLevel === 'official' || verifiedLevel === 'blue') {
+                        responseData.isVerifiedBlue = true;
+                        responseData.isEnterprise = true;
+                    } else if (verifiedLevel === 'verified') {
+                        responseData.isVerifiedGreen = true;
+                    }
+                }
+            }
+        } catch (e) {
+            console.log(`[CHECK] Direct query failed: ${e.message}`);
+        }
 
         // 3. Ambil Profile Picture URL (normal & HD)
         try {
@@ -599,9 +639,10 @@ app.post('/api/check', requireAuth, async (req, res) => {
             console.log(`[CHECK] Profile picture: Not available`);
         }
 
-        // 4. Ambil info tambahan dari contact
+        // 4. Ambil info tambahan dari contact/store
         try {
-            const contact = await session.sock.getContact(jid);
+            // Baileys menyimpan contact di store, bukan method getContact
+            const contact = session.sock.store?.contacts?.[jid];
             if (contact) {
                 if (contact.notify) responseData.pushName = contact.notify;
                 if (contact.verifiedName) {
@@ -619,8 +660,11 @@ app.post('/api/check', requireAuth, async (req, res) => {
                 console.log(`[CHECK] Contact info:`, {
                     notify: contact.notify,
                     verifiedName: contact.verifiedName,
-                    name: contact.name
+                    name: contact.name,
+                    fullContact: JSON.stringify(contact, null, 2)
                 });
+            } else {
+                console.log(`[CHECK] Contact not found in store`);
             }
         } catch (e) {
             console.log(`[CHECK] Contact info not available: ${e.message}`);
@@ -662,6 +706,87 @@ app.post('/api/check', requireAuth, async (req, res) => {
         } catch (e) {
             console.log(`[CHECK] Privacy settings check failed`);
         }
+        
+        // 8. Heuristic detection untuk Official/Blue Check
+        // Jika Baileys tidak mengembalikan verified_level dengan benar,
+        // kita bisa deteksi berdasarkan karakteristik akun official
+        if (responseData.isBusiness && !responseData.isVerifiedBlue && !responseData.isVerifiedGreen) {
+            let officialScore = 0;
+            let indicators = [];
+            
+            // Akun official biasanya punya:
+            // 1. Business hours (jam operasional) - STRONG indicator
+            // 2. Address lengkap
+            // 3. Website
+            // 4. Description lengkap
+            // 5. Category yang jelas
+            
+            const profile = responseData.businessInfo;
+            
+            // Cek business_hours dari raw businessProfile
+            let hasBusinessHours = false;
+            try {
+                const rawProfile = await session.sock.getBusinessProfile(jid);
+                if (rawProfile && rawProfile.business_hours) {
+                    hasBusinessHours = true;
+                    officialScore += 3; // Business hours adalah indikator kuat
+                    indicators.push('business_hours');
+                    console.log(`[CHECK] ✓ Has business hours (strong indicator)`);
+                }
+            } catch (e) {
+                // Ignore
+            }
+            
+            if (profile) {
+                if (profile.address && profile.address.length > 20) {
+                    officialScore += 2;
+                    indicators.push('address');
+                    console.log(`[CHECK] ✓ Has detailed address`);
+                }
+                if (profile.website && profile.website.length > 0) {
+                    officialScore += 2;
+                    indicators.push('website');
+                    console.log(`[CHECK] ✓ Has website`);
+                }
+                if (profile.description && profile.description.length > 30) {
+                    officialScore += 1;
+                    indicators.push('description');
+                    console.log(`[CHECK] ✓ Has detailed description`);
+                }
+                if (profile.category && profile.category !== 'Other') {
+                    officialScore += 1;
+                    indicators.push('category');
+                    console.log(`[CHECK] ✓ Has category`);
+                }
+                if (profile.email) {
+                    officialScore += 1;
+                    indicators.push('email');
+                    console.log(`[CHECK] ✓ Has email`);
+                }
+            }
+            
+            console.log(`[CHECK] Official detection score: ${officialScore}/10`);
+            console.log(`[CHECK] Indicators found: ${indicators.join(', ')}`);
+            
+            // Jika score >= 6, kemungkinan BESAR ini official account
+            // Terutama jika ada business_hours
+            if (officialScore >= 6 || (hasBusinessHours && officialScore >= 5)) {
+                console.log(`[CHECK] ⭐ HIGH CONFIDENCE: This is likely an Official/Blue Check account`);
+                
+                // AUTO-ENABLE: Mark sebagai blue verified
+                responseData.isVerifiedBlue = true;
+                responseData.isEnterprise = true;
+                responseData.isVerified = true;
+                responseData.detectionMethod = 'heuristic';
+                responseData.officialScore = officialScore;
+                
+                console.log(`[CHECK] ✅ Marked as Blue Verified (heuristic detection)`);
+            } else if (officialScore >= 4) {
+                console.log(`[CHECK] ⚠️ MEDIUM CONFIDENCE: Might be official account`);
+                responseData.likelyOfficial = true;
+                responseData.officialScore = officialScore;
+            }
+        }
 
         console.log(`[CHECK] Final data for ${formattedNumber}:`, {
             registered: true,
@@ -673,6 +798,9 @@ app.post('/api/check', requireAuth, async (req, res) => {
             isEnterprise: responseData.isEnterprise,
             verifiedName: responseData.verifiedName || 'N/A',
             verifiedLevel: responseData.businessInfo?.verifiedLevel || 'N/A',
+            detectionMethod: responseData.detectionMethod || 'api',
+            officialScore: responseData.officialScore,
+            likelyOfficial: responseData.likelyOfficial,
             hasCatalog: responseData.businessInfo?.hasCatalog || false,
             catalogCount: responseData.businessInfo?.catalogCount || 0,
             hasProfilePicture: !!responseData.profilePicture,

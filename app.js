@@ -536,6 +536,9 @@ async function processNumber(number, current, total) {
         }
         if (data.isVerifiedBlue) {
             badges.push('<span class="px-2 py-1 rounded bg-blue-500/20 text-blue-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> Official (Blue)</span>');
+            if (data.detectionMethod === 'heuristic') {
+                badges.push('<span class="px-2 py-1 rounded bg-cyan-500/20 text-cyan-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-brain"></i> AI Detected</span>');
+            }
         }
         if (data.isVerifiedGreen && !data.isVerifiedBlue) {
             badges.push('<span class="px-2 py-1 rounded bg-green-500/20 text-green-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> Verified (Green)</span>');
