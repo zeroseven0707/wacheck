@@ -480,39 +480,95 @@ app.post('/api/check', requireAuth, async (req, res) => {
         console.log(`[CHECK] Number registered: ${formattedNumber}`);
         const jid = result.jid || `${formattedNumber}@s.whatsapp.net`;
 
-        // Ambil info kontak
-        let bio = '';
-        let isBusiness = false;
-        let isVerified = false;
-        
-        try {
-            const status = await session.sock.fetchStatus(jid);
-            bio = status?.status || '';
-        } catch (e) {
-            // Bio mungkin private atau tidak ada
-            console.log(`[CHECK] Bio not available for ${formattedNumber}`);
-        }
-
-        try {
-            const businessProfile = await session.sock.getBusinessProfile(jid);
-            if (businessProfile) {
-                isBusiness = true;
-                isVerified = businessProfile.verified_level === 'verified' || 
-                            businessProfile.verified_level === 'official';
-            }
-        } catch (e) {
-            // Bukan akun bisnis
-        }
-
-        res.json({
+        // Initialize response data
+        let responseData = {
             registered: true,
             number: number,
-            bio: bio,
-            isBusiness: isBusiness,
-            isVerified: isVerified,
-            isMetaBusiness: isBusiness && isVerified,
-            jid: jid
+            jid: jid,
+            bio: '',
+            isBusiness: false,
+            isVerified: false,
+            isMetaBusiness: false,
+            businessInfo: null,
+            profilePicture: null,
+            lastSeen: null
+        };
+
+        // 1. Ambil Bio/Status
+        try {
+            console.log(`[CHECK] Fetching status for ${formattedNumber}`);
+            const status = await session.sock.fetchStatus(jid);
+            responseData.bio = status?.status || '';
+            console.log(`[CHECK] Bio: ${responseData.bio ? 'Found' : 'Empty'}`);
+        } catch (e) {
+            console.log(`[CHECK] Bio not available: ${e.message}`);
+        }
+
+        // 2. Ambil Business Profile (jika ada)
+        try {
+            console.log(`[CHECK] Fetching business profile for ${formattedNumber}`);
+            const businessProfile = await session.sock.getBusinessProfile(jid);
+            
+            if (businessProfile) {
+                responseData.isBusiness = true;
+                responseData.isVerified = businessProfile.verified_level === 'verified' || 
+                                         businessProfile.verified_level === 'official';
+                responseData.isMetaBusiness = responseData.isVerified;
+                
+                // Extract detailed business info
+                responseData.businessInfo = {
+                    description: businessProfile.description || '',
+                    category: businessProfile.category || '',
+                    email: businessProfile.email || '',
+                    website: businessProfile.website || [],
+                    address: businessProfile.address || '',
+                    verifiedLevel: businessProfile.verified_level || 'none',
+                    catalogCount: businessProfile.catalog_count || 0,
+                    hasCatalog: (businessProfile.catalog_count || 0) > 0
+                };
+                
+                console.log(`[CHECK] Business profile found:`, {
+                    category: responseData.businessInfo.category,
+                    verified: responseData.isVerified,
+                    catalog: responseData.businessInfo.hasCatalog,
+                    catalogCount: responseData.businessInfo.catalogCount
+                });
+            }
+        } catch (e) {
+            console.log(`[CHECK] Not a business account or profile unavailable: ${e.message}`);
+        }
+
+        // 3. Ambil Profile Picture URL (optional)
+        try {
+            const ppUrl = await session.sock.profilePictureUrl(jid, 'image');
+            responseData.profilePicture = ppUrl;
+            console.log(`[CHECK] Profile picture: Found`);
+        } catch (e) {
+            console.log(`[CHECK] Profile picture: Not available`);
+        }
+
+        // 4. Coba ambil info tambahan dari contact
+        try {
+            const contact = await session.sock.getContact(jid);
+            if (contact) {
+                // Some additional info might be available
+                if (contact.notify) {
+                    responseData.pushName = contact.notify;
+                }
+            }
+        } catch (e) {
+            console.log(`[CHECK] Contact info not available`);
+        }
+
+        console.log(`[CHECK] Final data for ${formattedNumber}:`, {
+            registered: true,
+            hasBio: !!responseData.bio,
+            isBusiness: responseData.isBusiness,
+            isVerified: responseData.isVerified,
+            hasCatalog: responseData.businessInfo?.hasCatalog || false
         });
+
+        res.json(responseData);
 
     } catch (error) {
         console.error('[CHECK] Error checking number:', error);

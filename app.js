@@ -506,24 +506,110 @@ async function processNumber(number, current, total) {
         // Update stats display
         updateStats();
         
-        // Create Result Element with ALL available data
+        // Create badges
         const badges = [];
         if (data.isMetaBusiness) {
-            badges.push('<span class="px-2 py-1 rounded bg-yellow-500/20 text-yellow-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-certificate"></i> Meta</span>');
+            badges.push('<span class="px-2 py-1 rounded bg-yellow-500/20 text-yellow-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-certificate"></i> Meta Verified</span>');
         }
-        if (data.isVerified) {
+        if (data.isVerified && !data.isMetaBusiness) {
             badges.push('<span class="px-2 py-1 rounded bg-green-500/20 text-green-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> Verified</span>');
         }
         if (data.isBusiness) {
             badges.push('<span class="px-2 py-1 rounded bg-brand-purple/20 text-brand-purple text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-briefcase"></i> Business</span>');
         }
+        if (data.businessInfo?.hasCatalog) {
+            badges.push(`<span class="px-2 py-1 rounded bg-blue-500/20 text-blue-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-store"></i> Catalog (${data.businessInfo.catalogCount})</span>`);
+        }
+        
+        // Business info section
+        let businessSection = '';
+        if (data.businessInfo) {
+            const info = data.businessInfo;
+            businessSection = `
+                <div class="mt-2 p-2 bg-slate-900/50 rounded-lg border border-slate-700/50 space-y-1">
+                    <p class="text-[10px] font-bold text-brand-purple uppercase tracking-wide mb-1">Business Details</p>
+                    ${info.category ? `<p class="text-xs text-slate-300"><i class="fa-solid fa-tag text-slate-500 mr-1"></i> ${escapeHtml(info.category)}</p>` : ''}
+                    ${info.description ? `<p class="text-xs text-slate-400 italic">"${escapeHtml(info.description)}"</p>` : ''}
+                    ${info.email ? `<p class="text-xs text-slate-400"><i class="fa-solid fa-envelope text-slate-500 mr-1"></i> ${escapeHtml(info.email)}</p>` : ''}
+                    ${info.website && info.website.length > 0 ? `<p class="text-xs text-slate-400"><i class="fa-solid fa-globe text-slate-500 mr-1"></i> ${escapeHtml(info.website[0])}</p>` : ''}
+                    ${info.address ? `<p class="text-xs text-slate-400"><i class="fa-solid fa-location-dot text-slate-500 mr-1"></i> ${escapeHtml(info.address)}</p>` : ''}
+                    ${info.hasCatalog ? `
+                        <div class="flex items-center gap-2 mt-2 pt-2 border-t border-slate-700/50">
+                            <i class="fa-solid fa-shopping-bag text-blue-400"></i>
+                            <span class="text-xs text-blue-400 font-semibold">${info.catalogCount} Product${info.catalogCount > 1 ? 's' : ''} in Catalog</span>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+        
+        // Info grid items
+        const infoItems = [];
+        infoItems.push(`
+            <div class="flex items-center gap-1 text-slate-400">
+                <i class="fa-solid fa-user-check"></i>
+                <span>Registered</span>
+            </div>
+        `);
+        
+        if (data.isBusiness) {
+            infoItems.push(`
+                <div class="flex items-center gap-1 text-brand-purple">
+                    <i class="fa-solid fa-store"></i>
+                    <span>Business Account</span>
+                </div>
+            `);
+        }
+        
+        if (data.bio) {
+            infoItems.push(`
+                <div class="flex items-center gap-1 text-brand-secondary">
+                    <i class="fa-solid fa-message"></i>
+                    <span>Has Status</span>
+                </div>
+            `);
+        }
+        
+        if (data.isVerified) {
+            infoItems.push(`
+                <div class="flex items-center gap-1 text-green-400">
+                    <i class="fa-solid fa-shield-check"></i>
+                    <span>Verified</span>
+                </div>
+            `);
+        }
+        
+        if (data.profilePicture) {
+            infoItems.push(`
+                <div class="flex items-center gap-1 text-slate-400">
+                    <i class="fa-solid fa-image"></i>
+                    <span>Has Photo</span>
+                </div>
+            `);
+        }
+        
+        if (data.pushName) {
+            infoItems.push(`
+                <div class="flex items-center gap-1 text-slate-400">
+                    <i class="fa-solid fa-id-card"></i>
+                    <span>${escapeHtml(data.pushName)}</span>
+                </div>
+            `);
+        }
         
         const resultHTML = `
             <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 hover:bg-slate-800 transition-all hover:border-brand-accent/30 group">
                 <div class="flex items-start gap-3">
-                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-brand-accent/20 to-brand-accent/5 flex items-center justify-center text-sm font-bold text-brand-accent flex-shrink-0 group-hover:scale-110 transition-transform">
-                        ${number.substring(number.length - 2)}
-                    </div>
+                    ${data.profilePicture ? `
+                        <img src="${data.profilePicture}" class="w-12 h-12 rounded-full border-2 border-brand-accent flex-shrink-0 group-hover:scale-110 transition-transform" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-brand-accent/20 to-brand-accent/5 flex items-center justify-center text-sm font-bold text-brand-accent flex-shrink-0 group-hover:scale-110 transition-transform" style="display:none;">
+                            ${number.substring(number.length - 2)}
+                        </div>
+                    ` : `
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-brand-accent/20 to-brand-accent/5 flex items-center justify-center text-sm font-bold text-brand-accent flex-shrink-0 group-hover:scale-110 transition-transform">
+                            ${number.substring(number.length - 2)}
+                        </div>
+                    `}
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1">
                             <span class="text-sm font-semibold text-white">+${number}</span>
@@ -540,29 +626,10 @@ async function processNumber(number, current, total) {
                             ${badges.join('')}
                         </div>
                         
-                        <div class="grid grid-cols-2 gap-2 text-[10px]">
-                            <div class="flex items-center gap-1 text-slate-400">
-                                <i class="fa-solid fa-user-check"></i>
-                                <span>Registered</span>
-                            </div>
-                            ${data.isBusiness ? `
-                                <div class="flex items-center gap-1 text-brand-purple">
-                                    <i class="fa-solid fa-store"></i>
-                                    <span>Business Account</span>
-                                </div>
-                            ` : ''}
-                            ${data.bio ? `
-                                <div class="flex items-center gap-1 text-brand-secondary">
-                                    <i class="fa-solid fa-message"></i>
-                                    <span>Has Status</span>
-                                </div>
-                            ` : ''}
-                            ${data.isVerified ? `
-                                <div class="flex items-center gap-1 text-green-400">
-                                    <i class="fa-solid fa-shield-check"></i>
-                                    <span>Verified</span>
-                                </div>
-                            ` : ''}
+                        ${businessSection}
+                        
+                        <div class="grid grid-cols-2 gap-2 text-[10px] mt-2">
+                            ${infoItems.join('')}
                         </div>
                         
                         ${data.jid ? `
