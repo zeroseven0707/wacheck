@@ -598,33 +598,52 @@ async function processNumber(number, current, total) {
         }
         
         const resultHTML = `
-            <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 hover:bg-slate-800 transition-all hover:border-brand-accent/30 group">
+            <div class="bg-slate-800/50 border ${data.isBusiness ? 'border-brand-purple/50' : 'border-slate-700'} rounded-xl p-4 hover:bg-slate-800 transition-all hover:border-brand-accent/30 group ${data.isBusiness ? 'bg-gradient-to-r from-purple-900/10 to-transparent' : ''}">
                 <div class="flex items-start gap-3">
-                    ${data.profilePicture ? `
-                        <img src="${data.profilePicture}" class="w-12 h-12 rounded-full border-2 border-brand-accent flex-shrink-0 group-hover:scale-110 transition-transform" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-brand-accent/20 to-brand-accent/5 flex items-center justify-center text-sm font-bold text-brand-accent flex-shrink-0 group-hover:scale-110 transition-transform" style="display:none;">
-                            ${number.substring(number.length - 2)}
-                        </div>
-                    ` : `
-                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-brand-accent/20 to-brand-accent/5 flex items-center justify-center text-sm font-bold text-brand-accent flex-shrink-0 group-hover:scale-110 transition-transform">
-                            ${number.substring(number.length - 2)}
-                        </div>
-                    `}
+                    <div class="relative">
+                        ${data.profilePicture ? `
+                            <img src="${data.profilePicture}" class="w-12 h-12 rounded-full border-2 ${data.isBusiness ? 'border-brand-purple' : 'border-brand-accent'} flex-shrink-0 group-hover:scale-110 transition-transform" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-brand-accent/20 to-brand-accent/5 flex items-center justify-center text-sm font-bold text-brand-accent flex-shrink-0 group-hover:scale-110 transition-transform" style="display:none;">
+                                ${number.substring(number.length - 2)}
+                            </div>
+                        ` : `
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-br ${data.isBusiness ? 'from-brand-purple/30 to-brand-purple/10' : 'from-brand-accent/20 to-brand-accent/5'} flex items-center justify-center text-sm font-bold ${data.isBusiness ? 'text-brand-purple' : 'text-brand-accent'} flex-shrink-0 group-hover:scale-110 transition-transform">
+                                ${number.substring(number.length - 2)}
+                            </div>
+                        `}
+                        ${data.isBusiness ? `
+                            <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-brand-purple rounded-full flex items-center justify-center border-2 border-slate-800">
+                                <i class="fa-solid fa-briefcase text-white text-[8px]"></i>
+                            </div>
+                        ` : ''}
+                        ${data.isVerified ? `
+                            <div class="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center border-2 border-slate-800">
+                                <i class="fa-solid fa-check text-white text-[8px]"></i>
+                            </div>
+                        ` : ''}
+                    </div>
                     <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 mb-1">
+                        <div class="flex items-center gap-2 mb-1 flex-wrap">
                             <span class="text-sm font-semibold text-white">+${number}</span>
-                            ${data.isVerified ? '<i class="fa-solid fa-badge-check text-blue-400 text-xs" title="Verified Account"></i>' : ''}
+                            ${data.isBusiness ? '<span class="px-1.5 py-0.5 bg-brand-purple/20 text-brand-purple text-[9px] font-bold rounded border border-brand-purple/30">BUSINESS</span>' : '<span class="px-1.5 py-0.5 bg-slate-700/50 text-slate-400 text-[9px] font-bold rounded">PERSONAL</span>'}
+                            ${data.isMetaBusiness ? '<span class="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 text-[9px] font-bold rounded border border-yellow-500/30 flex items-center gap-1"><i class="fa-solid fa-certificate text-[8px]"></i>META</span>' : ''}
+                            ${data.isVerified && !data.isMetaBusiness ? '<span class="px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[9px] font-bold rounded border border-blue-500/30 flex items-center gap-1"><i class="fa-solid fa-shield-check text-[8px]"></i>VERIFIED</span>' : ''}
                         </div>
+                        
+                        ${data.pushName ? `<p class="text-xs text-slate-400 mb-1"><i class="fa-solid fa-user text-[10px] mr-1"></i>${escapeHtml(data.pushName)}</p>` : ''}
                         
                         ${data.bio ? `
                             <div class="bg-slate-900/50 rounded-lg p-2 mb-2 border border-slate-700/50">
                                 <p class="text-xs text-slate-300 leading-relaxed">${escapeHtml(data.bio)}</p>
                             </div>
-                        ` : '<p class="text-xs text-slate-500 italic mb-2">No bio available</p>'}
+                        ` : '<p class="text-xs text-slate-500 italic mb-2"><i class="fa-solid fa-comment-slash text-[10px] mr-1"></i>No bio available</p>'}
                         
-                        <div class="flex flex-wrap gap-1.5 mb-2">
-                            ${badges.join('')}
-                        </div>
+                        ${data.businessInfo?.hasCatalog ? `
+                            <div class="flex items-center gap-2 mb-2 p-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                                <i class="fa-solid fa-shopping-bag text-blue-400"></i>
+                                <span class="text-xs text-blue-400 font-semibold">${data.businessInfo.catalogCount} Product${data.businessInfo.catalogCount > 1 ? 's' : ''} in Catalog</span>
+                            </div>
+                        ` : ''}
                         
                         ${businessSection}
                         
@@ -634,7 +653,7 @@ async function processNumber(number, current, total) {
                         
                         ${data.jid ? `
                             <div class="mt-2 pt-2 border-t border-slate-700/50">
-                                <p class="text-[9px] text-slate-600 font-mono">${data.jid}</p>
+                                <p class="text-[9px] text-slate-600 font-mono truncate">${data.jid}</p>
                             </div>
                         ` : ''}
                     </div>
