@@ -295,18 +295,19 @@
                     <div id="connectionActive" class="hidden">
                         <div class="flex items-center gap-4 mb-6">
                             <div class="relative">
-                                <img src="https://ui-avatars.com/api/?name=Device&background=25D366&color=fff" class="w-12 h-12 rounded-full border-2 border-brand-accent">
-                                <div class="absolute bottom-0 right-0 w-3 h-3 bg-brand-accent rounded-full border-2 border-brand-card"></div>
+                                <img id="deviceAvatar" src="https://ui-avatars.com/api/?name=Device&background=25D366&color=fff" class="w-12 h-12 rounded-full border-2 border-brand-accent">
+                                <div class="absolute bottom-0 right-0 w-3 h-3 bg-brand-accent rounded-full border-2 border-brand-card animate-pulse"></div>
                             </div>
-                            <div>
-                                <h4 class="font-bold text-white">iPhone 13 Pro</h4>
+                            <div class="flex-1">
+                                <h4 class="font-bold text-white" id="deviceName">Connected Device</h4>
                                 <p class="text-xs text-brand-accent flex items-center gap-1">
-                                    <i class="fa-solid fa-wifi text-[10px]"></i> Connected
+                                    <i class="fa-solid fa-wifi text-[10px]"></i> <span id="deviceNumber">Active</span>
                                 </p>
+                                <p class="text-[10px] text-slate-500 mt-0.5" id="devicePlatform">WhatsApp</p>
                             </div>
                         </div>
                         <button onclick="disconnect()" class="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 py-2 rounded-lg text-sm transition-colors">
-                            Disconnect
+                            <i class="fa-solid fa-power-off mr-1"></i> Disconnect
                         </button>
                     </div>
                 </div>
@@ -316,10 +317,17 @@
                     <h3 class="text-lg font-display font-bold mb-4 flex items-center gap-2">
                         <i class="fa-solid fa-list-ol text-brand-secondary"></i> Target Numbers
                     </h3>
-                    <textarea id="numberInput" class="glass-input w-full h-40 rounded-xl p-4 text-sm font-mono text-slate-300 focus:text-white resize-none" placeholder="Paste numbers here (one per line)...&#10;628123456789&#10;628987654321"></textarea>
-                    <div class="flex justify-between items-center mt-4">
+                    <textarea id="numberInput" class="glass-input w-full h-40 rounded-xl p-4 text-sm font-mono text-slate-300 focus:text-white resize-none" placeholder="Paste numbers here (one per line)...&#10;628123456789 (Indonesia)&#10;2250194860197 (Ivory Coast)&#10;14155552671 (USA)&#10;447700900123 (UK)"></textarea>
+                    <div class="flex justify-between items-center mt-3">
                         <span class="text-xs text-slate-500" id="inputCount">0 numbers</span>
                         <button onclick="clearInput()" class="text-xs text-slate-400 hover:text-white transition-colors">Clear</button>
+                    </div>
+                    <div class="mt-2 p-2 bg-slate-900/30 rounded-lg border border-slate-800">
+                        <p class="text-[10px] text-slate-500 leading-relaxed">
+                            <i class="fa-solid fa-circle-info text-brand-secondary mr-1"></i>
+                            <strong class="text-slate-400">Format:</strong> Country code + number (no + or spaces). 
+                            Supports international numbers (8-15 digits).
+                        </p>
                     </div>
                 </div>
 
@@ -329,7 +337,7 @@
             <div class="lg:col-span-8 space-y-6">
                 
                 <!-- Stats Grid -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
                     <!-- Total -->
                     <div class="glass-panel p-4 rounded-2xl border-l-4 border-slate-500">
                         <p class="text-xs text-slate-400 uppercase font-bold">Total</p>
@@ -349,6 +357,11 @@
                     <div class="glass-panel p-4 rounded-2xl border-l-4 border-brand-purple">
                         <p class="text-xs text-slate-400 uppercase font-bold">Business</p>
                         <p class="text-2xl font-display font-bold text-brand-purple mt-1" id="statBusiness">0</p>
+                    </div>
+                    <!-- Meta Verified -->
+                    <div class="glass-panel p-4 rounded-2xl border-l-4 border-yellow-500">
+                        <p class="text-xs text-slate-400 uppercase font-bold">Verified</p>
+                        <p class="text-2xl font-display font-bold text-yellow-500 mt-1" id="statVerified">0</p>
                     </div>
                 </div>
 

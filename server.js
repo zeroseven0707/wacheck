@@ -394,9 +394,32 @@ app.get('/api/status', requireAuth, (req, res) => {
     const sessionId = req.session.sessionId;
     const session = whatsappSessions.get(sessionId);
     
+    let deviceInfo = null;
+    
+    if (session && session.isConnected && session.sock) {
+        try {
+            // Get device info from Baileys
+            const authState = session.sock.authState;
+            if (authState && authState.creds) {
+                const platform = authState.creds.platform || 'Unknown';
+                const deviceModel = authState.creds.deviceModel || 'Unknown Device';
+                const phoneNumber = authState.creds.me?.id?.split(':')[0] || 'Unknown';
+                
+                deviceInfo = {
+                    platform: platform,
+                    model: deviceModel,
+                    number: phoneNumber
+                };
+            }
+        } catch (error) {
+            console.error('[STATUS] Error getting device info:', error);
+        }
+    }
+    
     res.json({ 
         connected: session ? session.isConnected : false,
-        lastUpdate: session ? session.lastUpdate : null
+        lastUpdate: session ? session.lastUpdate : null,
+        device: deviceInfo
     });
 });
 
@@ -422,28 +445,39 @@ app.post('/api/check', requireAuth, async (req, res) => {
     }
 
     try {
-        // Format nomor
+        // Format nomor - remove all non-numeric characters
         let formattedNumber = number.toString().replace(/[^0-9]/g, '');
         
-        // Validate number
-        if (formattedNumber.length < 10 || formattedNumber.length > 15) {
+        console.log(`[CHECK] Checking number: ${formattedNumber} (original: ${number})`);
+        
+        // Validate number - allow international numbers (8-15 digits)
+        // Examples:
+        // - Indonesia: 628xxx (12-13 digits)
+        // - USA: 1xxx (11 digits)
+        // - Ivory Coast: 225xxx (12-13 digits)
+        // - UK: 44xxx (12-13 digits)
+        if (formattedNumber.length < 8 || formattedNumber.length > 15) {
+            console.log(`[CHECK] Invalid length: ${formattedNumber.length} digits`);
             return res.json({ 
                 registered: false,
                 number: number,
-                error: 'Invalid number format'
+                error: `Invalid number length (${formattedNumber.length} digits). Must be 8-15 digits.`
             });
         }
 
         // Cek apakah nomor terdaftar
+        console.log(`[CHECK] Calling onWhatsApp for: ${formattedNumber}`);
         const [result] = await session.sock.onWhatsApp(formattedNumber);
         
         if (!result || !result.exists) {
+            console.log(`[CHECK] Number not registered: ${formattedNumber}`);
             return res.json({ 
                 registered: false,
                 number: number
             });
         }
 
+        console.log(`[CHECK] Number registered: ${formattedNumber}`);
         const jid = result.jid || `${formattedNumber}@s.whatsapp.net`;
 
         // Ambil info kontak

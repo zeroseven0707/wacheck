@@ -279,8 +279,41 @@ async function checkConnection() {
         document.getElementById('connectionScan').classList.add('hidden');
         document.getElementById('connectionActive').classList.remove('hidden');
         
+        // Update device info if available
+        if (result.data.device) {
+            const device = result.data.device;
+            console.log('[DEBUG] Device info:', device);
+            
+            // Update device name
+            const deviceName = document.getElementById('deviceName');
+            if (deviceName) {
+                deviceName.textContent = device.model || 'Connected Device';
+            }
+            
+            // Update device number
+            const deviceNumber = document.getElementById('deviceNumber');
+            if (deviceNumber && device.number) {
+                deviceNumber.textContent = `+${device.number}`;
+            }
+            
+            // Update platform
+            const devicePlatform = document.getElementById('devicePlatform');
+            if (devicePlatform && device.platform) {
+                devicePlatform.textContent = device.platform;
+            }
+            
+            // Update avatar
+            const deviceAvatar = document.getElementById('deviceAvatar');
+            if (deviceAvatar && device.model) {
+                const initials = device.model.substring(0, 2).toUpperCase();
+                deviceAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=25D366&color=fff`;
+            }
+        }
+        
         // Entrance animation
-        gsap.from("#connectionActive > div", {x: -20, opacity: 0, duration: 0.4, stagger: 0.1});
+        if (typeof gsap !== 'undefined') {
+            gsap.from("#connectionActive > div", {x: -20, opacity: 0, duration: 0.4, stagger: 0.1});
+        }
         
         isConnecting = false;
     } else if (isConnecting) {
@@ -369,7 +402,7 @@ async function startScan() {
         return;
     }
     
-    if (currentNumbers.length > 100) {
+    if (currentNumbers.length > 200) {
         if (!confirm(`You are about to check ${currentNumbers.length} numbers. This may take a while. Continue?`)) {
             return;
         }
@@ -389,35 +422,63 @@ async function startScan() {
     stats = { total: 0, registered: 0, bio: 0, business: 0, verified: 0, metaBusiness: 0 };
     updateStats();
     
-    let index = 0;
     const total = currentNumbers.length;
+    let processed = 0;
     
-    // Process numbers one by one
-    for (let i = 0; i < total; i++) {
+    // Process in batches of 30 for better performance
+    const BATCH_SIZE = 30;
+    const batches = [];
+    
+    for (let i = 0; i < currentNumbers.length; i += BATCH_SIZE) {
+        batches.push(currentNumbers.slice(i, i + BATCH_SIZE));
+    }
+    
+    console.log(`[SCAN] Processing ${total} numbers in ${batches.length} batches`);
+    
+    // Process each batch
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
         if (!isScanning) break;
         
-        const num = currentNumbers[i];
-        await processNumber(num, i + 1, total);
+        const batch = batches[batchIndex];
+        console.log(`[SCAN] Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} numbers)`);
+        
+        // Process all numbers in batch simultaneously
+        const promises = batch.map(async (number) => {
+            if (!isScanning) return null;
+            
+            try {
+                const result = await processNumber(number, 0, total);
+                return result;
+            } catch (error) {
+                console.error(`[SCAN] Error processing ${number}:`, error);
+                return null;
+            }
+        });
+        
+        // Wait for all in batch to complete
+        await Promise.all(promises);
+        
+        processed += batch.length;
         
         // Update Progress
-        const percent = Math.round(((i + 1) / total) * 100);
+        const percent = Math.round((processed / total) * 100);
         document.getElementById('progressBar').style.width = `${percent}%`;
         document.getElementById('progressPercent').innerText = `${percent}%`;
-        document.getElementById('currentNumber').innerText = `Checking: ${num}`;
+        document.getElementById('currentNumber').innerText = `Processed: ${processed}/${total}`;
         
-        // Delay to avoid rate limit
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Small delay between batches to avoid overwhelming the server
+        if (batchIndex < batches.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
     }
     
     if (isScanning) {
         stopScan();
-        alert(`Scan completed!\n\nTotal: ${stats.total}\nRegistered: ${stats.registered}\nWith Bio: ${stats.bio}\nBusiness: ${stats.business}`);
+        alert(`Scan completed!\n\nTotal: ${stats.total}\nRegistered: ${stats.registered}\nWith Bio: ${stats.bio}\nBusiness: ${stats.business}\nVerified: ${stats.verified}`);
     }
 }
 
 async function processNumber(number, current, total) {
-    stats.total = current;
-    
     // Call real API
     const result = await safeFetch(`${API_URL}/check`, {
         method: 'POST',
@@ -427,11 +488,13 @@ async function processNumber(number, current, total) {
     
     if (!result.success) {
         console.error('Check failed for', number, result.error);
-        updateStats();
-        return;
+        return null;
     }
     
     const data = result.data;
+    
+    // Update stats (thread-safe increment)
+    stats.total++;
     
     if (data.registered) {
         stats.registered++;
@@ -440,21 +503,75 @@ async function processNumber(number, current, total) {
         if (data.isVerified) stats.verified++;
         if (data.isMetaBusiness) stats.metaBusiness++;
         
-        // Create Result Element
+        // Update stats display
+        updateStats();
+        
+        // Create Result Element with ALL available data
+        const badges = [];
+        if (data.isMetaBusiness) {
+            badges.push('<span class="px-2 py-1 rounded bg-yellow-500/20 text-yellow-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-certificate"></i> Meta</span>');
+        }
+        if (data.isVerified) {
+            badges.push('<span class="px-2 py-1 rounded bg-green-500/20 text-green-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> Verified</span>');
+        }
+        if (data.isBusiness) {
+            badges.push('<span class="px-2 py-1 rounded bg-brand-purple/20 text-brand-purple text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-briefcase"></i> Business</span>');
+        }
+        
         const resultHTML = `
-            <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-3 flex items-center gap-3 animate-fade-in hover:bg-slate-800 transition-colors">
-                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-600 flex items-center justify-center text-xs font-bold text-white">
-                    ${number.substring(number.length - 2)}
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2">
-                        <span class="text-sm font-medium text-white truncate">+${number}</span>
-                        ${data.isVerified ? '<i class="fa-solid fa-circle-check text-brand-secondary text-xs" title="Verified"></i>' : ''}
+            <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 hover:bg-slate-800 transition-all hover:border-brand-accent/30 group">
+                <div class="flex items-start gap-3">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-brand-accent/20 to-brand-accent/5 flex items-center justify-center text-sm font-bold text-brand-accent flex-shrink-0 group-hover:scale-110 transition-transform">
+                        ${number.substring(number.length - 2)}
                     </div>
-                    <p class="text-xs text-slate-400 truncate">${data.bio || "No Bio"}</p>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-sm font-semibold text-white">+${number}</span>
+                            ${data.isVerified ? '<i class="fa-solid fa-badge-check text-blue-400 text-xs" title="Verified Account"></i>' : ''}
+                        </div>
+                        
+                        ${data.bio ? `
+                            <div class="bg-slate-900/50 rounded-lg p-2 mb-2 border border-slate-700/50">
+                                <p class="text-xs text-slate-300 leading-relaxed">${escapeHtml(data.bio)}</p>
+                            </div>
+                        ` : '<p class="text-xs text-slate-500 italic mb-2">No bio available</p>'}
+                        
+                        <div class="flex flex-wrap gap-1.5 mb-2">
+                            ${badges.join('')}
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-2 text-[10px]">
+                            <div class="flex items-center gap-1 text-slate-400">
+                                <i class="fa-solid fa-user-check"></i>
+                                <span>Registered</span>
+                            </div>
+                            ${data.isBusiness ? `
+                                <div class="flex items-center gap-1 text-brand-purple">
+                                    <i class="fa-solid fa-store"></i>
+                                    <span>Business Account</span>
+                                </div>
+                            ` : ''}
+                            ${data.bio ? `
+                                <div class="flex items-center gap-1 text-brand-secondary">
+                                    <i class="fa-solid fa-message"></i>
+                                    <span>Has Status</span>
+                                </div>
+                            ` : ''}
+                            ${data.isVerified ? `
+                                <div class="flex items-center gap-1 text-green-400">
+                                    <i class="fa-solid fa-shield-check"></i>
+                                    <span>Verified</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        ${data.jid ? `
+                            <div class="mt-2 pt-2 border-t border-slate-700/50">
+                                <p class="text-[9px] text-slate-600 font-mono">${data.jid}</p>
+                            </div>
+                        ` : ''}
+                    </div>
                 </div>
-                ${data.isBusiness ? '<span class="px-2 py-1 rounded bg-brand-purple/20 text-brand-purple text-[10px] font-bold uppercase">Biz</span>' : ''}
-                ${data.isMetaBusiness ? '<span class="px-2 py-1 rounded bg-brand-pink/20 text-brand-pink text-[10px] font-bold uppercase">Meta</span>' : ''}
             </div>
         `;
         
@@ -471,9 +588,11 @@ async function processNumber(number, current, total) {
         if (typeof gsap !== 'undefined') {
             gsap.from(list.firstElementChild, {x: -20, opacity: 0, duration: 0.3});
         }
+    } else {
+        updateStats();
     }
     
-    updateStats();
+    return data;
 }
 
 function stopScan() {
@@ -494,6 +613,7 @@ function updateStats() {
     document.getElementById('statRegistered').innerText = stats.registered;
     document.getElementById('statBio').innerText = stats.bio;
     document.getElementById('statBusiness').innerText = stats.business;
+    document.getElementById('statVerified').innerText = stats.verified;
 }
 
 function exportResults() {
