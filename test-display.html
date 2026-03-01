@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Display</title>
+    <style>
+        .hidden { display: none !important; }
+        .container { padding: 20px; border: 2px solid blue; margin: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Test Display Toggle</h1>
+    
+    <button onclick="showAuth()">Show Auth</button>
+    <button onclick="showMain()">Show Main</button>
+    
+    <div id="authContainer" class="container">
+        <h2>AUTH CONTAINER</h2>
+        <p>This is the auth form</p>
+    </div>
+    
+    <div id="mainContainer" class="container hidden">
+        <h2>MAIN CONTAINER</h2>
+        <p>This is the main app</p>
+        <p>User: <span id="currentUser">-</span></p>
+    </div>
+    
+    <script>
+        function showAuth() {
+            console.log('Showing auth');
+            document.getElementById('authContainer').classList.remove('hidden');
+            document.getElementById('mainContainer').classList.add('hidden');
+        }
+        
+        function showMain() {
+            console.log('Showing main');
+            document.getElementById('authContainer').classList.add('hidden');
+            document.getElementById('mainContainer').classList.remove('hidden');
+            document.getElementById('currentUser').textContent = 'TestUser';
+        }
+    </script>
+</body>
+</html>

@@ -3,928 +3,428 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp Bio Checker Pro</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>WhatsApp Bio Checker Pro | Next Gen</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- GSAP for Animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            dark: '#0B0F19',
+                            card: '#151B2B',
+                            accent: '#25D366', // WhatsApp Green
+                            accentGlow: 'rgba(37, 211, 102, 0.5)',
+                            secondary: '#34B7F1',
+                            purple: '#8B5CF6',
+                            pink: '#EC4899'
+                        }
+                    },
+                    boxShadow: {
+                        'neon': '0 0 20px rgba(37, 211, 102, 0.3)',
+                        'neon-hover': '0 0 30px rgba(37, 211, 102, 0.5)',
+                        'card': '0 8px 32px 0 rgba(0, 0, 0, 0.36)',
+                    },
+                    animation: {
+                        'spin-slow': 'spin 8s linear infinite',
+                        'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --primary: #25D366;
-            --primary-dark: #128C7E;
-            --secondary: #34B7F1;
-            --accent: #00A884;
-            --bg-dark: #0f172a;
-            --bg-card: rgba(30, 41, 59, 0.7);
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --border: rgba(148, 163, 184, 0.1);
-            --shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        }
-
         body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-            min-height: 100vh;
-            color: var(--text-primary);
-            padding: 20px;
-            position: relative;
+            background-color: #0B0F19;
+            color: #ffffff;
             overflow-x: hidden;
         }
 
-        body::before {
-            content: '';
-            position: fixed;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(37, 211, 102, 0.03) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 20%, rgba(0, 168, 132, 0.05) 0%, transparent 40%),
-                        radial-gradient(circle at 20% 80%, rgba(52, 183, 241, 0.05) 0%, transparent 40%);
-            animation: pulse 20s ease-in-out infinite;
-            z-index: -1;
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0B0F19; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #25D366; 
         }
 
-        @keyframes pulse {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            50% { transform: translate(-2%, -2%) rotate(180deg); }
+        /* Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(21, 27, 43, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .glass-input {
+            background: rgba(11, 15, 25, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        .glass-input:focus {
+            border-color: #25D366;
+            box-shadow: 0 0 0 4px rgba(37, 211, 102, 0.1);
+            outline: none;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        /* Header Styles */
-        header {
-            text-align: center;
-            padding: 30px 20px;
-            margin-bottom: 20px;
-        }
-
-        .logo {
-            display: inline-flex;
-            align-items: center;
-            gap: 16px;
-            margin-bottom: 12px;
-        }
-
-        .logo-icon {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 32px;
-            box-shadow: 0 10px 30px -5px rgba(37, 211, 102, 0.4);
-            animation: float 3s ease-in-out infinite;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-
-        h1 {
-            font-size: 2.2rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary) 100%);
+        /* Gradient Text */
+        .text-gradient {
+            background: linear-gradient(to right, #fff, #25D366);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            background-clip: text;
-            letter-spacing: -1px;
         }
 
-        .subtitle {
-            color: var(--text-secondary);
-            font-size: 1rem;
-            margin-top: 8px;
+        /* Loader */
+        .loader {
+            border: 3px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            border-top: 3px solid #25D366;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
-        /* Glass Card Effect */
-        .glass-card {
-            background: var(--bg-card);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            padding: 28px;
-            box-shadow: var(--shadow);
+        /* QR Scan Animation */
+        .scan-line {
+            width: 100%;
+            height: 2px;
+            background: #25D366;
+            box-shadow: 0 0 10px #25D366;
+            position: absolute;
+            top: 0;
+            left: 0;
+            animation: scan 2s linear infinite;
+        }
+        @keyframes scan {
+            0% { top: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        /* Card Hover Effect */
+        .hover-card {
             transition: transform 0.3s ease, box-shadow 0.3s ease;
-            margin-bottom: 24px;
         }
-
-        .glass-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.6);
-        }
-
-        /* Auth Section */
-        .auth-container {
-            max-width: 450px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .auth-title {
-            text-align: center;
-            margin-bottom: 24px;
-            font-size: 1.5rem;
-            font-weight: 600;
-        }
-
-        .input-group {
-            margin-bottom: 16px;
-        }
-
-        .input-field {
-            width: 100%;
-            padding: 16px;
-            background: rgba(15, 23, 42, 0.6);
-            border: 2px solid var(--border);
-            border-radius: 12px;
-            color: var(--text-primary);
-            font-family: inherit;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-        }
-
-        .input-field:focus {
-            outline: none;
-            border-color: var(--primary);
-            background: rgba(15, 23, 42, 0.8);
-            box-shadow: 0 0 0 4px rgba(37, 211, 102, 0.1);
-        }
-
-        .input-field::placeholder {
-            color: var(--text-secondary);
-        }
-
-        .btn {
-            width: 100%;
-            padding: 16px 28px;
-            border: none;
-            border-radius: 12px;
-            font-family: inherit;
-            font-weight: 600;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
-            box-shadow: 0 4px 20px -5px rgba(37, 211, 102, 0.4);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 30px -5px rgba(37, 211, 102, 0.6);
-        }
-
-        .btn-secondary {
-            background: rgba(52, 183, 241, 0.2);
-            color: var(--secondary);
-            border: 2px solid rgba(52, 183, 241, 0.3);
-        }
-
-        .btn-secondary:hover {
-            background: rgba(52, 183, 241, 0.3);
-            transform: translateY(-2px);
-        }
-
-        .btn-danger {
-            background: rgba(239, 68, 68, 0.2);
-            color: #ef4444;
-            border: 2px solid rgba(239, 68, 68, 0.3);
-            padding: 8px 20px;
-            font-size: 0.9rem;
-        }
-
-        .btn-danger:hover {
-            background: rgba(239, 68, 68, 0.3);
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 12px;
-            margin-top: 8px;
-        }
-
-        .btn-group .btn {
-            flex: 1;
-        }
-
-        .auth-message {
-            margin-top: 16px;
-            padding: 12px;
-            border-radius: 8px;
-            text-align: center;
-            display: none;
-            font-size: 0.9rem;
-        }
-
-        .auth-message.success {
-            background: rgba(37, 211, 102, 0.2);
-            color: var(--primary);
-            border: 1px solid rgba(37, 211, 102, 0.3);
-            display: block;
-        }
-
-        .auth-message.error {
-            background: rgba(239, 68, 68, 0.2);
-            color: #ef4444;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            display: block;
-        }
-
-        /* User Info Bar */
-        .user-bar {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            margin-top: 16px;
-            flex-wrap: wrap;
-        }
-
-        .user-info {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-        }
-
-        .user-info strong {
-            color: var(--primary);
-        }
-
-        /* Main Layout Grid */
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 24px;
-        }
-
-        @media (min-width: 1024px) {
-            .main-grid {
-                grid-template-columns: 380px 1fr;
-                align-items: start;
-            }
-        }
-
-        /* Connection Section */
-        .section-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--text-primary);
-        }
-
-        .connection-status {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 16px;
-            background: rgba(15, 23, 42, 0.5);
-            border-radius: 16px;
-            border: 1px solid var(--border);
-            margin-bottom: 20px;
-        }
-
-        .status-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            position: relative;
-        }
-
-        .status-dot.connected {
-            background: var(--primary);
-            animation: pulse-dot 2s infinite;
-        }
-
-        .status-dot.disconnected {
-            background: #ef4444;
-            animation: pulse-dot-red 2s infinite;
-        }
-
-        .status-dot.connecting {
-            background: #f59e0b;
-            animation: pulse-dot-yellow 2s infinite;
-        }
-
-        @keyframes pulse-dot {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.4); }
-            50% { box-shadow: 0 0 0 8px rgba(37, 211, 102, 0); }
-        }
-
-        @keyframes pulse-dot-red {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-            50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
-        }
-
-        @keyframes pulse-dot-yellow {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
-            50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
-        }
-
-        .status-text {
-            font-weight: 500;
-            color: var(--text-primary);
-        }
-
-        .qr-container {
-            padding: 24px;
-            background: rgba(15, 23, 42, 0.5);
-            border-radius: 16px;
-            border: 2px dashed var(--border);
-            text-align: center;
-            min-height: 200px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
-        .qr-placeholder {
-            width: 160px;
-            height: 160px;
-            background: linear-gradient(135deg, rgba(37, 211, 102, 0.1) 0%, rgba(0, 168, 132, 0.1) 100%);
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid rgba(37, 211, 102, 0.2);
-        }
-
-        .qr-placeholder::after {
-            content: 'QR Code';
-            color: var(--primary);
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-
-        .instruction-box {
-            padding: 16px;
-            background: rgba(37, 211, 102, 0.1);
-            border-radius: 12px;
-            border-left: 4px solid var(--primary);
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            line-height: 1.6;
-        }
-
-        .instruction-box strong {
-            color: var(--primary);
-            display: block;
-            margin-bottom: 4px;
-        }
-
-        /* Input Section */
-        .textarea-field {
-            width: 100%;
-            min-height: 160px;
-            padding: 20px;
-            background: rgba(15, 23, 42, 0.6);
-            border: 2px solid var(--border);
-            border-radius: 16px;
-            color: var(--text-primary);
-            font-family: inherit;
-            font-size: 0.95rem;
-            resize: vertical;
-            transition: all 0.3s ease;
-            line-height: 1.6;
-            margin-bottom: 16px;
-        }
-
-        .textarea-field:focus {
-            outline: none;
-            border-color: var(--primary);
-            background: rgba(15, 23, 42, 0.8);
-            box-shadow: 0 0 0 4px rgba(37, 211, 102, 0.1);
-        }
-
-        .textarea-field::placeholder {
-            color: var(--text-secondary);
-        }
-
-        /* Stats Section */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-
-        .stat-card {
-            background: rgba(15, 23, 42, 0.5);
-            padding: 20px;
-            border-radius: 16px;
-            border: 1px solid var(--border);
-            text-align: center;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            transform: scaleX(0);
-            transition: transform 0.3s ease;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-4px);
-            background: rgba(15, 23, 42, 0.7);
+        .hover-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 40px -10px rgba(37, 211, 102, 0.2);
             border-color: rgba(37, 211, 102, 0.3);
         }
 
-        .stat-card:hover::before {
-            transform: scaleX(1);
-        }
-
-        .stat-label {
-            display: block;
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .stat-value {
-            display: block;
-            font-size: 1.6rem;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-
-        .stat-card.registered .stat-value { color: var(--primary); }
-        .stat-card.bio .stat-value { color: var(--secondary); }
-        .stat-card.business .stat-value { color: #a78bfa; }
-        .stat-card.verified .stat-value { color: #fbbf24; }
-        .stat-card.meta .stat-value { color: #f472b6; }
-
-        /* Progress Bar */
-        .progress-wrapper {
-            background: rgba(15, 23, 42, 0.5);
-            border-radius: 12px;
-            padding: 4px;
-            position: relative;
-            height: 32px;
-            overflow: hidden;
-        }
-
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
-            border-radius: 8px;
-            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            padding-right: 12px;
-            box-shadow: 0 0 20px rgba(37, 211, 102, 0.3);
-        }
-
-        .progress-bar::after {
-            content: '';
-            position: absolute;
+        /* Background Mesh */
+        .bg-mesh {
+            position: fixed;
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-            animation: shimmer 2s infinite;
-        }
-
-        @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
-        }
-
-        .progress-text {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-weight: 700;
-            font-size: 0.9rem;
-            color: var(--text-primary);
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            z-index: 10;
-        }
-
-        /* Results Section */
-        .results-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            max-height: 400px;
-            overflow-y: auto;
-            padding-right: 8px;
-        }
-
-        .results-list::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .results-list::-webkit-scrollbar-track {
-            background: rgba(15, 23, 42, 0.3);
-            border-radius: 3px;
-        }
-
-        .results-list::-webkit-scrollbar-thumb {
-            background: var(--primary);
-            border-radius: 3px;
-        }
-
-        .result-item {
-            background: rgba(15, 23, 42, 0.5);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 16px;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            transition: all 0.3s ease;
-            animation: slideIn 0.3s ease;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateX(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        .result-item:hover {
-            background: rgba(15, 23, 42, 0.7);
-            border-color: rgba(37, 211, 102, 0.3);
-            transform: translateX(4px);
-        }
-
-        .result-avatar {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 1.2rem;
-            flex-shrink: 0;
-        }
-
-        .result-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .result-number {
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 4px;
-        }
-
-        .result-bio {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .result-badges {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .badge {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .badge-business {
-            background: rgba(167, 139, 250, 0.2);
-            color: #a78bfa;
-            border: 1px solid rgba(167, 139, 250, 0.3);
-        }
-
-        .badge-verified {
-            background: rgba(251, 191, 36, 0.2);
-            color: #fbbf24;
-            border: 1px solid rgba(251, 191, 36, 0.3);
-        }
-
-        .badge-meta {
-            background: rgba(244, 114, 182, 0.2);
-            color: #f472b6;
-            border: 1px solid rgba(244, 114, 182, 0.3);
-        }
-
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--text-secondary);
-        }
-
-        .empty-state-icon {
-            font-size: 3rem;
-            margin-bottom: 16px;
-            opacity: 0.5;
-        }
-
-        /* Loading Animation */
-        .loading {
-            display: inline-flex;
-            gap: 4px;
-        }
-
-        .loading span {
-            width: 8px;
-            height: 8px;
-            background: var(--primary);
-            border-radius: 50%;
-            animation: bounce 1.4s infinite ease-in-out both;
-        }
-
-        .loading span:nth-child(1) { animation-delay: -0.32s; }
-        .loading span:nth-child(2) { animation-delay: -0.16s; }
-
-        @keyframes bounce {
-            0%, 80%, 100% { transform: scale(0); }
-            40% { transform: scale(1); }
-        }
-
-        /* Utility Classes */
-        .hidden {
-            display: none !important;
-        }
-
-        .text-center {
-            text-align: center;
-        }
-
-        .mb-0 {
-            margin-bottom: 0 !important;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            h1 {
-                font-size: 1.6rem;
-            }
-            
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .glass-card {
-                padding: 20px;
-            }
-
-            .btn-group {
-                flex-direction: column;
-            }
-
-            .user-bar {
-                flex-direction: column;
-                gap: 12px;
-            }
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            background: 
+                radial-gradient(circle at 15% 50%, rgba(37, 211, 102, 0.08), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(52, 183, 241, 0.08), transparent 25%);
         }
     </style>
 </head>
-<body>
+<body class="antialiased min-h-screen flex flex-col items-center justify-center p-4 md:p-8">
 
-    <!-- Auth Container -->
-    <div id="authContainer" class="container auth-container">
-        <header>
-            <div class="logo">
-                <div class="logo-icon">📱</div>
-                <div>
-                    <h1>WhatsApp Bio Checker</h1>
-                    <div class="subtitle">Analisis Profil WhatsApp Profesional</div>
-                </div>
-            </div>
-        </header>
+    <div class="bg-mesh"></div>
 
-        <div class="glass-card">
-            <h2 class="auth-title">🔐 Login / Register</h2>
-            
-            <div id="authForm">
-                <div class="input-group">
-                    <input 
-                        type="text" 
-                        id="username" 
-                        class="input-field"
-                        placeholder="Username"
-                    />
-                </div>
-                
-                <div class="input-group">
-                    <input 
-                        type="password" 
-                        id="password" 
-                        class="input-field"
-                        placeholder="Password"
-                    />
-                </div>
-                
-                <div class="btn-group">
-                    <button onclick="login()" class="btn btn-primary">
-                        🔓 Login
-                    </button>
-                    <button onclick="register()" class="btn btn-secondary">
-                        📝 Register
-                    </button>
-                </div>
-                
-                <div id="authMessage" class="auth-message"></div>
+    <!-- AUTHENTICATION VIEW -->
+    <div id="authView" class="w-full max-w-md relative z-10">
+        <div class="text-center mb-10 animate-fade-in-down">
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-brand-accent to-emerald-800 mb-6 shadow-neon animate-float">
+                <i class="fa-brands fa-whatsapp text-4xl text-white"></i>
             </div>
+            <h1 class="text-4xl font-display font-bold mb-2 tracking-tight">Bio Checker <span class="text-brand-accent">Pro</span></h1>
+            <p class="text-slate-400">Advanced WhatsApp Profile Intelligence</p>
         </div>
+
+        <div class="glass-panel rounded-3xl p-8 shadow-card">
+            <div class="flex gap-2 mb-6 bg-black/20 p-1 rounded-xl">
+                <button onclick="switchAuth('login')" id="tabLogin" class="flex-1 py-2 rounded-lg text-sm font-medium transition-all bg-brand-accent/10 text-brand-accent border border-brand-accent/20">Login</button>
+                <button onclick="switchAuth('register')" id="tabRegister" class="flex-1 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition-all">Register</button>
+            </div>
+
+            <form id="authForm" onsubmit="event.preventDefault(); handleAuth();" class="space-y-5">
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Username</label>
+                    <div class="relative">
+                        <i class="fa-regular fa-user absolute left-4 top-3.5 text-slate-500"></i>
+                        <input type="text" id="authUser" class="glass-input w-full rounded-xl py-3 pl-10 pr-4 text-white placeholder-slate-600 focus:ring-0" placeholder="johndoe" required>
+                    </div>
+                </div>
+                
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Password</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-lock absolute left-4 top-3.5 text-slate-500"></i>
+                        <input type="password" id="authPass" class="glass-input w-full rounded-xl py-3 pl-10 pr-4 text-white placeholder-slate-600 focus:ring-0" placeholder="••••••••" required>
+                    </div>
+                </div>
+
+                <div id="authError" class="hidden text-red-400 text-sm text-center bg-red-400/10 py-2 rounded-lg border border-red-400/20"></div>
+
+                <button type="submit" class="w-full bg-gradient-to-r from-brand-accent to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold py-3.5 rounded-xl shadow-neon hover:shadow-neon-hover transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 group">
+                    <span id="authBtnText">Access Dashboard</span>
+                    <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                </button>
+            </form>
+        </div>
+        <p class="text-center text-slate-600 text-xs mt-8">© 3 2024 Bio Checker Pro. Secure & Encrypted.</p>
     </div>
 
-    <!-- Main App Container -->
-    <div id="mainContainer" class="container hidden">
-        <header>
-            <div class="logo">
-                <div class="logo-icon">📱</div>
+    <!-- MAIN DASHBOARD VIEW -->
+    <div id="dashboardView" class="hidden w-full max-w-7xl animate-fade-in">
+        
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-accent to-emerald-800 flex items-center justify-center shadow-neon">
+                    <i class="fa-brands fa-whatsapp text-2xl text-white"></i>
+                </div>
                 <div>
-                    <h1>WhatsApp Bio Checker</h1>
-                    <div class="subtitle">Analisis Profil WhatsApp Profesional</div>
+                    <h2 class="text-2xl font-display font-bold text-white">Dashboard</h2>
+                    <div class="flex items-center gap-2 text-xs text-slate-400">
+                        <span class="w-2 h-2 rounded-full bg-brand-accent animate-pulse"></span>
+                        System Operational
+                    </div>
                 </div>
             </div>
-            
-            <div class="user-bar">
-                <span class="user-info">
-                    Logged in as: <strong id="currentUser">-</strong>
-                </span>
-                <button onclick="logoutUser()" class="btn btn-danger">
-                    🚪 Logout
+
+            <div class="flex items-center gap-4 glass-panel px-5 py-2 rounded-full">
+                <div class="flex items-center gap-3 border-r border-slate-700 pr-4">
+                    <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-brand-accent">
+                        JD
+                    </div>
+                    <div class="text-sm">
+                        <p class="text-white font-medium leading-none" id="displayUser">User</p>
+                        <p class="text-xs text-slate-400 mt-1">Pro Plan</p>
+                    </div>
+                </div>
+                <button onclick="logout()" class="text-slate-400 hover:text-red-400 transition-colors" title="Logout">
+                    <i class="fa-solid fa-power-off"></i>
                 </button>
             </div>
         </header>
 
-        <div class="main-grid">
-            <!-- Left Column: Connection -->
-            <div class="left-column">
-                <div class="glass-card mb-0">
-                    <h2 class="section-title">
-                        <span>🔗</span>
-                        Status Koneksi
-                    </h2>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- LEFT COLUMN: Controls & Status -->
+            <div class="lg:col-span-4 space-y-6">
+                
+                <!-- Connection Card -->
+                <div class="glass-panel rounded-3xl p-6 relative overflow-hidden group hover-card">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <i class="fa-solid fa-link text-6xl text-brand-accent"></i>
+                    </div>
                     
-                    <div class="connection-status">
-                        <span id="statusIndicator" class="status-dot disconnected"></span>
-                        <span id="statusText" class="status-text">Not Connected</span>
-                    </div>
+                    <h3 class="text-lg font-display font-bold mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-mobile-screen-button text-brand-accent"></i> Connection
+                    </h3>
 
-                    <div id="connectButtonSection">
-                        <button id="connectBtn" onclick="connectWhatsApp()" class="btn btn-primary" style="margin-bottom: 12px;">
-                            📱 Connect WhatsApp
-                        </button>
-                        <p style="font-size: 0.9rem; color: var(--text-secondary); text-align: center;">
-                            Klik tombol di atas untuk memulai koneksi
-                        </p>
-                    </div>
-
-                    <div id="qrSection" class="qr-container hidden">
-                        <div class="qr-placeholder"></div>
-                        <div class="loading">
-                            <span></span>
-                            <span></span>
-                            <span></span>
+                    <div id="connectionIdle" class="text-center py-6">
+                        <div class="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-500">
+                            <i class="fa-brands fa-whatsapp text-2xl"></i>
                         </div>
-                        <p style="color: var(--text-secondary); font-size: 0.9rem;">Memuat QR Code...</p>
+                        <p class="text-slate-400 text-sm mb-6">Link your WhatsApp device to start scanning.</p>
+                        <button onclick="initiateConnection()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-brand-accent text-white py-3 rounded-xl transition-all flex items-center justify-center gap-2 group">
+                            <i class="fa-solid fa-qrcode group-hover:scale-110 transition-transform"></i> Pair Device
+                        </button>
                     </div>
 
-                    <div class="instruction-box">
-                        <strong>💡 Cara Connect:</strong>
-                        Buka WhatsApp → Menu (⋮) → Linked Devices → Link a Device → Scan QR Code
+                    <div id="connectionScan" class="hidden py-2">
+                        <div class="relative w-48 h-48 bg-white rounded-xl mx-auto mb-4 overflow-hidden flex items-center justify-center">
+                            <!-- Simulated QR -->
+                            <div class="absolute inset-0 grid grid-cols-6 grid-rows-6 gap-1 p-4 opacity-80">
+                                <div class="col-span-2 row-span-2 border-4 border-black"></div>
+                                <div class="col-span-2 row-span-2 border-4 border-black col-start-5"></div>
+                                <div class="col-span-2 row-span-2 border-4 border-black row-start-5"></div>
+                                <!-- Random noise -->
+                                <div class="col-start-3 row-start-2 bg-black"></div>
+                                <div class="col-start-4 row-start-3 bg-black"></div>
+                                <div class="col-start-2 row-start-4 bg-black"></div>
+                                <div class="col-start-5 row-start-5 bg-black"></div>
+                            </div>
+                            <div class="scan-line"></div>
+                            <div class="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-[2px] z-10" id="qrLoading">
+                                <div class="loader"></div>
+                            </div>
+                        </div>
+                        <p class="text-center text-xs text-brand-accent animate-pulse">Waiting for scan...</p>
+                        <p class="text-center text-[10px] text-slate-500 mt-2">Open WhatsApp &rarr; Settings &rarr; Linked Devices</p>
+                    </div>
+
+                    <div id="connectionActive" class="hidden">
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="relative">
+                                <img src="https://ui-avatars.com/api/?name=Device&background=25D366&color=fff" class="w-12 h-12 rounded-full border-2 border-brand-accent">
+                                <div class="absolute bottom-0 right-0 w-3 h-3 bg-brand-accent rounded-full border-2 border-brand-card"></div>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-white">iPhone 13 Pro</h4>
+                                <p class="text-xs text-brand-accent flex items-center gap-1">
+                                    <i class="fa-solid fa-wifi text-[10px]"></i> Connected
+                                </p>
+                            </div>
+                        </div>
+                        <button onclick="disconnect()" class="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 py-2 rounded-lg text-sm transition-colors">
+                            Disconnect
+                        </button>
                     </div>
                 </div>
+
+                <!-- Input Card -->
+                <div class="glass-panel rounded-3xl p-6 hover-card">
+                    <h3 class="text-lg font-display font-bold mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-list-ol text-brand-secondary"></i> Target Numbers
+                    </h3>
+                    <textarea id="numberInput" class="glass-input w-full h-40 rounded-xl p-4 text-sm font-mono text-slate-300 focus:text-white resize-none" placeholder="Paste numbers here (one per line)...&#10;628123456789&#10;628987654321"></textarea>
+                    <div class="flex justify-between items-center mt-4">
+                        <span class="text-xs text-slate-500" id="inputCount">0 numbers</span>
+                        <button onclick="clearInput()" class="text-xs text-slate-400 hover:text-white transition-colors">Clear</button>
+                    </div>
+                </div>
+
             </div>
 
-            <!-- Right Column: Main Content -->
-            <div class="right-column">
-                <!-- Input Section -->
-                <div class="glass-card">
-                    <h2 class="section-title">
-                        <span>📝</span>
-                        Input Nomor
-                    </h2>
+            <!-- RIGHT COLUMN: Stats & Results -->
+            <div class="lg:col-span-8 space-y-6">
+                
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <!-- Total -->
+                    <div class="glass-panel p-4 rounded-2xl border-l-4 border-slate-500">
+                        <p class="text-xs text-slate-400 uppercase font-bold">Total</p>
+                        <p class="text-2xl font-display font-bold text-white mt-1" id="statTotal">0</p>
+                    </div>
+                    <!-- Registered -->
+                    <div class="glass-panel p-4 rounded-2xl border-l-4 border-brand-accent">
+                        <p class="text-xs text-slate-400 uppercase font-bold">Registered</p>
+                        <p class="text-2xl font-display font-bold text-brand-accent mt-1" id="statRegistered">0</p>
+                    </div>
+                    <!-- With Bio -->
+                    <div class="glass-panel p-4 rounded-2xl border-l-4 border-brand-secondary">
+                        <p class="text-xs text-slate-400 uppercase font-bold">Has Bio</p>
+                        <p class="text-2xl font-display font-bold text-brand-secondary mt-1" id="statBio">0</p>
+                    </div>
+                    <!-- Business -->
+                    <div class="glass-panel p-4 rounded-2xl border-l-4 border-brand-purple">
+                        <p class="text-xs text-slate-400 uppercase font-bold">Business</p>
+                        <p class="text-2xl font-display font-bold text-brand-purple mt-1" id="statBusiness">0</p>
+                    </div>
+                </div>
+
+                <!-- Action Bar -->
+                <div class="glass-panel p-4 rounded-2xl flex flex-col md:flex-row gap-4 items-center justify-between">
+                    <div class="flex items-center gap-3 w-full md:w-auto">
+                        <div class="h-10 w-10 rounded-full bg-slate-800 flex items-center justify-center text-brand-accent">
+                            <i class="fa-solid fa-rocket"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-sm">Ready to Scan</h4>
+                            <p class="text-xs text-slate-400">System is idle and waiting.</p>
+                        </div>
+                    </div>
                     
-                    <textarea 
-                        id="numberInput" 
-                        class="textarea-field"
-                        placeholder="Masukkan nomor WhatsApp (satu nomor per baris)&#10;Contoh:&#10;6281234567890&#10;6281234567891&#10;6281234567892"
-                    ></textarea>
-                    
-                    <div class="btn-group">
-                        <button id="checkBtn" onclick="startCheck()" class="btn btn-primary">
-                            <span>🔍</span>
-                            Mulai Cek
-                        </button>
-                        <button id="stopBtn" onclick="stopCheck()" class="btn btn-danger" disabled>
-                            <span>⏹️</span>
+                    <div class="flex gap-3 w-full md:w-auto">
+                        <button id="btnStop" onclick="stopScan()" disabled class="flex-1 md:flex-none px-6 py-2.5 rounded-xl bg-slate-800 text-slate-400 font-medium cursor-not-allowed transition-all">
                             Stop
                         </button>
+                        <button id="btnStart" onclick="startScan()" class="flex-1 md:flex-none px-8 py-2.5 rounded-xl bg-brand-accent hover:bg-emerald-400 text-brand-dark font-bold shadow-neon hover:shadow-neon-hover transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                            <span>Start Check</span>
+                            <i class="fa-solid fa-play text-xs"></i>
+                        </button>
                     </div>
                 </div>
 
-                <!-- Stats Section -->
-                <div class="glass-card">
-                    <h2 class="section-title">
-                        <span>📊</span>
-                        Statistik Real-time
-                    </h2>
+                <!-- Progress Area -->
+                <div id="progressArea" class="hidden glass-panel p-6 rounded-2xl">
+                    <div class="flex justify-between text-sm mb-2">
+                        <span class="text-slate-300">Analyzing profiles...</span>
+                        <span class="text-brand-accent font-mono" id="progressPercent">0%</span>
+                    </div>
+                    <div class="h-2 bg-slate-800 rounded-full overflow-hidden">
+                        <div id="progressBar" class="h-full bg-gradient-to-r from-brand-accent to-brand-secondary w-0 transition-all duration-300 ease-out"></div>
+                    </div>
+                    <div class="mt-2 text-xs text-slate-500 font-mono" id="currentNumber">Waiting...</div>
+                </div>
+
+                <!-- Results List -->
+                <div class="glass-panel rounded-3xl p-1 min-h-[400px] flex flex-col">
+                    <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+                        <h3 class="font-bold text-slate-200">Live Results</h3>
+                        <button onclick="exportResults()" class="text-xs bg-slate-800 hover:bg-slate-700 text-white px-3 py-1 rounded-lg transition-colors">
+                            <i class="fa-solid fa-download mr-1"></i> Export
+                        </button>
+                    </div>
                     
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <span class="stat-label">Total</span>
-                            <span class="stat-value" id="totalCount">0</span>
-                        </div>
-                        <div class="stat-card registered">
-                            <span class="stat-label">Terdaftar</span>
-                            <span class="stat-value" id="registeredCount">0</span>
-                        </div>
-                        <div class="stat-card bio">
-                            <span class="stat-label">Punya Bio</span>
-                            <span class="stat-value" id="bioCount">0</span>
-                        </div>
-                        <div class="stat-card business">
-                            <span class="stat-label">Business</span>
-                            <span class="stat-value" id="businessCount">0</span>
-                        </div>
-                        <div class="stat-card verified">
-                            <span class="stat-label">Verified</span>
-                            <span class="stat-value" id="verifiedCount">0</span>
-                        </div>
-                        <div class="stat-card meta">
-                            <span class="stat-label">Meta Business</span>
-                            <span class="stat-value" id="metaBusinessCount">0</span>
-                        </div>
-                    </div>
-
-                    <div class="progress-wrapper">
-                        <div class="progress-bar" id="progressFill" style="width: 0%"></div>
-                        <span class="progress-text" id="progressText">0%</span>
-                    </div>
-                </div>
-
-                <!-- Results Section -->
-                <div class="glass-card mb-0">
-                    <h2 class="section-title">
-                        <span>⭐</span>
-                        Hasil Terbaik
-                    </h2>
-                    
-                    <div id="results" class="results-list">
-                        <div class="empty-state">
-                            <div class="empty-state-icon">📋</div>
-                            <p>Belum ada hasil. Mulai cek nomor untuk melihat hasil di sini.</p>
+                    <div class="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar" id="resultsList">
+                        <!-- Empty State -->
+                        <div class="h-full flex flex-col items-center justify-center text-slate-600 opacity-60">
+                            <i class="fa-solid fa-clipboard-list text-4xl mb-3"></i>
+                            <p>No data to display</p>
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
     </div>
 
+    <script>
+        // Intro Animation (keep this for initial page load)
+        window.addEventListener('load', () => {
+            if (typeof gsap !== 'undefined') {
+                gsap.from(".animate-fade-in-down > *", {
+                    y: 30,
+                    opacity: 0,
+                    duration: 0.8,
+                    stagger: 0.1,
+                    ease: "power3.out"
+                });
+            }
+        });
+    </script>
+
+    <!-- Load External App Logic -->
     <script src="app.js"></script>
 </body>
 </html>

@@ -1,11 +1,20 @@
+// ============================================
+// WhatsApp Bio Checker Pro - Backend Integration
+// ============================================
+
 const API_URL = 'http://localhost:3000/api';
 
-let isChecking = false;
+// State Management
+let isLoggedIn = false;
 let isConnected = false;
+let isScanning = false;
 let isConnecting = false;
 let connectionCheckInterval = null;
-let isAuthenticated = false;
 let currentUsername = '';
+let currentAuthMode = 'login'; // 'login' or 'register'
+let scanInterval = null;
+let currentNumbers = [];
+let results = [];
 let stats = {
     total: 0,
     registered: 0,
@@ -14,9 +23,11 @@ let stats = {
     verified: 0,
     metaBusiness: 0
 };
-let results = [];
 
-// Utility function untuk handle fetch errors
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
 async function safeFetch(url, options = {}) {
     try {
         const response = await fetch(url, {
@@ -37,304 +48,283 @@ async function safeFetch(url, options = {}) {
     }
 }
 
-// Cek auth status saat load
-async function checkAuthStatus() {
-    const result = await safeFetch(`${API_URL}/auth/status`);
+function showError(message) {
+    const errorDiv = document.getElementById('authError');
+    if (errorDiv) {
+        errorDiv.innerText = message;
+        errorDiv.classList.remove('hidden');
+        setTimeout(() => errorDiv.classList.add('hidden'), 5000);
+    }
+}
+
+// ============================================
+// AUTH FUNCTIONS
+// ============================================
+
+function switchAuth(type) {
+    currentAuthMode = type;
+    const tabLogin = document.getElementById('tabLogin');
+    const tabRegister = document.getElementById('tabRegister');
+    const btnText = document.getElementById('authBtnText');
     
-    if (result.success && result.data.authenticated) {
-        isAuthenticated = true;
-        currentUsername = result.data.username;
-        showMainApp();
-        checkInitialStatus();
+    if (type === 'login') {
+        tabLogin.className = "flex-1 py-2 rounded-lg text-sm font-medium transition-all bg-brand-accent/10 text-brand-accent border border-brand-accent/20";
+        tabRegister.className = "flex-1 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition-all";
+        btnText.innerText = "Access Dashboard";
     } else {
-        showAuthForm();
+        tabRegister.className = "flex-1 py-2 rounded-lg text-sm font-medium transition-all bg-brand-accent/10 text-brand-accent border border-brand-accent/20";
+        tabLogin.className = "flex-1 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition-all";
+        btnText.innerText = "Create Account";
     }
 }
 
-function showAuthForm() {
-    const authContainer = document.getElementById('authContainer');
-    const mainContainer = document.getElementById('mainContainer');
+async function handleAuth() {
+    const user = document.getElementById('authUser').value.trim();
+    const pass = document.getElementById('authPass').value;
+    const errorDiv = document.getElementById('authError');
+    const btn = document.querySelector('button[type="submit"]');
     
-    if (authContainer) authContainer.style.display = 'block';
-    if (mainContainer) mainContainer.style.display = 'none';
-}
-
-function showMainApp() {
-    const authContainer = document.getElementById('authContainer');
-    const mainContainer = document.getElementById('mainContainer');
-    const currentUserEl = document.getElementById('currentUser');
-    
-    if (authContainer) authContainer.style.display = 'none';
-    if (mainContainer) mainContainer.style.display = 'block';
-    if (currentUserEl) currentUserEl.textContent = currentUsername;
-}
-
-function showAuthMessage(message, isError = false) {
-    const msgEl = document.getElementById('authMessage');
-    if (!msgEl) return;
-    
-    msgEl.textContent = message;
-    msgEl.style.display = 'block';
-    msgEl.style.background = isError ? 'rgba(239, 68, 68, 0.2)' : 'rgba(37, 211, 102, 0.2)';
-    msgEl.style.color = isError ? '#ef4444' : 'var(--primary)';
-    msgEl.style.border = `1px solid ${isError ? 'rgba(239, 68, 68, 0.3)' : 'rgba(37, 211, 102, 0.3)'}`;
-    
-    // Auto hide after 5 seconds
-    setTimeout(() => {
-        if (msgEl) msgEl.style.display = 'none';
-    }, 5000);
-}
-
-// Login
-async function login() {
-    const usernameEl = document.getElementById('username');
-    const passwordEl = document.getElementById('password');
-    
-    if (!usernameEl || !passwordEl) {
-        console.error('Form elements not found');
+    // Validation
+    if (user.length < 3) {
+        showError("Username must be at least 3 characters");
         return;
     }
     
-    const username = usernameEl.value.trim();
-    const password = passwordEl.value;
-    
-    if (!username || !password) {
-        showAuthMessage('Username dan password harus diisi!', true);
+    if (pass.length < 6) {
+        showError("Password must be at least 6 characters");
         return;
     }
     
-    showAuthMessage('Logging in...', false);
+    // Show loading
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<div class="loader border-white/30 border-t-white w-5 h-5"></div>';
+    btn.disabled = true;
     
-    const result = await safeFetch(`${API_URL}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-    });
-    
-    if (result.success) {
-        isAuthenticated = true;
-        currentUsername = result.data.username;
-        showMainApp();
-        checkInitialStatus();
-    } else {
-        showAuthMessage(result.error || 'Login gagal!', true);
-    }
-}
-
-// Register
-async function register() {
-    const usernameEl = document.getElementById('username');
-    const passwordEl = document.getElementById('password');
-    
-    if (!usernameEl || !passwordEl) {
-        console.error('Form elements not found');
-        return;
-    }
-    
-    const username = usernameEl.value.trim();
-    const password = passwordEl.value;
-    
-    if (!username || !password) {
-        showAuthMessage('Username dan password harus diisi!', true);
-        return;
-    }
-    
-    if (username.length < 3) {
-        showAuthMessage('Username minimal 3 karakter!', true);
-        return;
-    }
-    
-    if (password.length < 6) {
-        showAuthMessage('Password minimal 6 karakter!', true);
-        return;
-    }
-    
-    showAuthMessage('Registering...', false);
-    
-    const result = await safeFetch(`${API_URL}/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-    });
-    
-    if (result.success) {
-        showAuthMessage('✅ Register berhasil! Silakan login.', false);
-        passwordEl.value = '';
-    } else {
-        showAuthMessage(result.error || 'Register gagal!', true);
+    try {
+        let result;
+        
+        if (currentAuthMode === 'register') {
+            result = await safeFetch(`${API_URL}/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: user, password: pass })
+            });
+            
+            if (result.success) {
+                showError("✅ Registration successful! Please login.");
+                errorDiv.classList.remove('bg-red-400/10', 'border-red-400/20', 'text-red-400');
+                errorDiv.classList.add('bg-green-400/10', 'border-green-400/20', 'text-green-400');
+                
+                // Switch to login
+                setTimeout(() => {
+                    switchAuth('login');
+                    document.getElementById('authPass').value = '';
+                }, 2000);
+                
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+                return;
+            }
+        } else {
+            result = await safeFetch(`${API_URL}/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: user, password: pass })
+            });
+        }
+        
+        if (result.success) {
+            isLoggedIn = true;
+            currentUsername = result.data.username;
+            document.getElementById('displayUser').innerText = currentUsername;
+            
+            // Animation Transition
+            gsap.to("#authView", {
+                opacity: 0, 
+                y: -20, 
+                duration: 0.5, 
+                onComplete: () => {
+                    document.getElementById('authView').classList.add('hidden');
+                    document.getElementById('dashboardView').classList.remove('hidden');
+                    gsap.fromTo("#dashboardView", 
+                        { opacity: 0, y: 20 }, 
+                        { opacity: 1, y: 0, duration: 0.5 }
+                    );
+                    
+                    // Check if already connected
+                    checkInitialStatus();
+                }
+            });
+        } else {
+            showError(result.error || 'Authentication failed');
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+        }
+    } catch (error) {
+        showError('Connection error: ' + error.message);
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
     }
 }
 
-// Logout
-async function logoutUser() {
-    if (!confirm('Yakin ingin logout?')) return;
+async function logout() {
+    if (!confirm('Are you sure you want to logout?')) return;
     
-    const result = await safeFetch(`${API_URL}/logout`, {
-        method: 'POST'
-    });
+    await safeFetch(`${API_URL}/logout`, { method: 'POST' });
     
-    isAuthenticated = false;
-    currentUsername = '';
-    isConnected = false;
-    isConnecting = false;
-    
+    // Clear intervals
     if (connectionCheckInterval) {
         clearInterval(connectionCheckInterval);
         connectionCheckInterval = null;
     }
+    if (scanInterval) {
+        clearInterval(scanInterval);
+        scanInterval = null;
+    }
     
-    showAuthForm();
+    // Reset state
+    isLoggedIn = false;
+    isConnected = false;
+    isScanning = false;
+    currentUsername = '';
     
-    const usernameEl = document.getElementById('username');
-    const passwordEl = document.getElementById('password');
-    if (usernameEl) usernameEl.value = '';
-    if (passwordEl) passwordEl.value = '';
+    location.reload();
 }
 
-// Fungsi untuk connect WhatsApp
-async function connectWhatsApp() {
-    if (isConnecting) return;
+// Check auth status on load
+async function checkAuthStatus() {
+    const result = await safeFetch(`${API_URL}/auth/status`);
     
-    const connectBtn = document.getElementById('connectBtn');
-    const connectButtonSection = document.getElementById('connectButtonSection');
-    const qrSection = document.getElementById('qrSection');
+    if (result.success && result.data.authenticated) {
+        isLoggedIn = true;
+        currentUsername = result.data.username;
+        document.getElementById('displayUser').innerText = currentUsername;
+        
+        // Show dashboard
+        document.getElementById('authView').classList.add('hidden');
+        document.getElementById('dashboardView').classList.remove('hidden');
+        
+        // Check connection status
+        checkInitialStatus();
+    }
+}
+
+// ============================================
+// CONNECTION FUNCTIONS
+// ============================================
+
+async function initiateConnection() {
+    console.log('[DEBUG] initiateConnection called');
     
-    if (!connectBtn || !connectButtonSection || !qrSection) {
-        console.error('UI elements not found');
+    if (isConnecting) {
+        console.log('[DEBUG] Already connecting, skipping');
         return;
     }
     
     isConnecting = true;
-    connectBtn.disabled = true;
-    connectBtn.textContent = '⏳ Connecting...';
-    connectButtonSection.style.display = 'none';
-    qrSection.style.display = 'block';
     
+    // UI Updates
+    console.log('[DEBUG] Updating UI to show scan mode');
+    document.getElementById('connectionIdle').classList.add('hidden');
+    document.getElementById('connectionScan').classList.remove('hidden');
+    
+    // Start connection
+    console.log('[DEBUG] Calling API /connect');
     const result = await safeFetch(`${API_URL}/connect`, {
         method: 'POST'
     });
     
     if (!result.success) {
-        alert('Gagal memulai koneksi: ' + result.error);
+        console.error('[DEBUG] Connection failed:', result.error);
+        alert('Failed to start connection: ' + result.error);
         isConnecting = false;
-        connectBtn.disabled = false;
-        connectBtn.textContent = '📱 Connect WhatsApp';
-        connectButtonSection.style.display = 'block';
-        qrSection.style.display = 'none';
+        document.getElementById('connectionScan').classList.add('hidden');
+        document.getElementById('connectionIdle').classList.remove('hidden');
         return;
     }
     
-    // Mulai auto-refresh status
+    console.log('[DEBUG] Connection started successfully');
+    
+    // Hide QR loading after 1s
+    setTimeout(() => {
+        console.log('[DEBUG] Hiding QR loading overlay');
+        const qrLoading = document.getElementById('qrLoading');
+        if (qrLoading) {
+            qrLoading.style.display = 'none';
+        }
+    }, 1000);
+    
+    // Start checking for QR and connection
     if (!connectionCheckInterval) {
+        console.log('[DEBUG] Starting connection check interval');
         connectionCheckInterval = setInterval(checkConnection, 2000);
     }
     checkConnection();
 }
 
-// Cek status koneksi WhatsApp
 async function checkConnection() {
     if (!isConnecting && !isConnected) return;
-    
-    const statusIndicator = document.getElementById('statusIndicator');
-    const statusText = document.getElementById('statusText');
-    
-    if (!statusIndicator || !statusText) return;
     
     const result = await safeFetch(`${API_URL}/status`);
     
     if (!result.success) {
-        statusIndicator.className = 'status-dot disconnected';
-        statusText.textContent = '❌ Server Error';
+        console.error('Status check failed:', result.error);
         return;
     }
     
     isConnected = result.data.connected;
     
     if (isConnected) {
-        statusIndicator.className = 'status-dot connected';
-        statusText.textContent = '✅ Connected';
+        // Show connected state
+        document.getElementById('connectionScan').classList.add('hidden');
+        document.getElementById('connectionActive').classList.remove('hidden');
         
-        const qrSection = document.getElementById('qrSection');
-        const connectButtonSection = document.getElementById('connectButtonSection');
-        if (qrSection) qrSection.style.display = 'none';
-        if (connectButtonSection) connectButtonSection.style.display = 'none';
+        // Entrance animation
+        gsap.from("#connectionActive > div", {x: -20, opacity: 0, duration: 0.4, stagger: 0.1});
         
         isConnecting = false;
-    } else {
-        statusIndicator.className = 'status-dot disconnected';
-        statusText.textContent = '⏳ Waiting for scan...';
+    } else if (isConnecting) {
+        // Check for QR code
         checkQRCode();
     }
 }
 
-// Ambil QR code
 async function checkQRCode() {
-    const qrSection = document.getElementById('qrSection');
-    if (!qrSection) return;
-    
     const result = await safeFetch(`${API_URL}/qr`);
     
-    if (!result.success) {
-        qrSection.innerHTML = '<p style="color: #e74c3c;">❌ Error loading QR Code</p>';
-        return;
-    }
+    if (!result.success) return;
     
     const data = result.data;
     
-    if (data.connected) {
-        qrSection.style.display = 'none';
-    } else if (data.qr) {
-        qrSection.innerHTML = `
-            <p style="color: var(--text-secondary); margin-bottom: 12px;">📱 Scan QR Code dengan WhatsApp Anda:</p>
-            <img src="${data.qr}" alt="QR Code" style="max-width: 280px; margin: 0 auto; display: block; border: 3px solid var(--primary); border-radius: 16px; padding: 12px; background: white;">
-        `;
-        qrSection.style.display = 'block';
-    } else {
-        qrSection.innerHTML = `
-            <div class="qr-placeholder"></div>
-            <div class="loading">
-                <span></span>
-                <span></span>
-                <span></span>
-            </div>
-            <p style="color: var(--text-secondary); font-size: 0.9rem;">Generating QR Code...</p>
-        `;
-        qrSection.style.display = 'block';
+    if (data.qr) {
+        // Replace dummy QR with real QR
+        const qrContainer = document.querySelector('#connectionScan .relative.w-48');
+        if (qrContainer) {
+            qrContainer.innerHTML = `
+                <img src="${data.qr}" alt="QR Code" class="w-full h-full object-contain rounded-xl">
+                <div class="scan-line"></div>
+            `;
+        }
     }
 }
 
-// Fungsi cek WhatsApp number
-async function checkWhatsAppNumber(number) {
-    const result = await safeFetch(`${API_URL}/check`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ number })
-    });
+async function disconnect() {
+    if (!confirm('Disconnect WhatsApp?')) return;
     
-    if (!result.success) {
-        return { registered: false, error: true, message: result.error };
-    }
+    await safeFetch(`${API_URL}/disconnect`, { method: 'POST' });
     
-    return result.data;
+    isConnected = false;
+    document.getElementById('connectionActive').classList.add('hidden');
+    document.getElementById('connectionIdle').classList.remove('hidden');
 }
 
-// Cek status awal saat load
 async function checkInitialStatus() {
     const result = await safeFetch(`${API_URL}/status`);
     
     if (result.success && result.data.connected) {
         isConnected = true;
-        isConnecting = true;
-        
-        const statusIndicator = document.getElementById('statusIndicator');
-        const statusText = document.getElementById('statusText');
-        const connectButtonSection = document.getElementById('connectButtonSection');
-        const qrSection = document.getElementById('qrSection');
-        
-        if (statusIndicator) statusIndicator.className = 'status-dot connected';
-        if (statusText) statusText.textContent = '✅ Connected';
-        if (connectButtonSection) connectButtonSection.style.display = 'none';
-        if (qrSection) qrSection.style.display = 'none';
+        document.getElementById('connectionIdle').classList.add('hidden');
+        document.getElementById('connectionActive').classList.remove('hidden');
         
         if (!connectionCheckInterval) {
             connectionCheckInterval = setInterval(checkConnection, 3000);
@@ -342,180 +332,206 @@ async function checkInitialStatus() {
     }
 }
 
-function updateStats() {
-    const elements = {
-        totalCount: document.getElementById('totalCount'),
-        registeredCount: document.getElementById('registeredCount'),
-        bioCount: document.getElementById('bioCount'),
-        businessCount: document.getElementById('businessCount'),
-        verifiedCount: document.getElementById('verifiedCount'),
-        metaBusinessCount: document.getElementById('metaBusinessCount')
-    };
-    
-    if (elements.totalCount) elements.totalCount.textContent = stats.total;
-    if (elements.registeredCount) elements.registeredCount.textContent = stats.registered;
-    if (elements.bioCount) elements.bioCount.textContent = stats.bio;
-    if (elements.businessCount) elements.businessCount.textContent = stats.business;
-    if (elements.verifiedCount) elements.verifiedCount.textContent = stats.verified;
-    if (elements.metaBusinessCount) elements.metaBusinessCount.textContent = stats.metaBusiness;
+// ============================================
+// INPUT FUNCTIONS
+// ============================================
+
+const inputArea = document.getElementById('numberInput');
+if (inputArea) {
+    inputArea.addEventListener('input', (e) => {
+        const lines = e.target.value.split('\n').filter(line => line.trim() !== '');
+        document.getElementById('inputCount').innerText = `${lines.length} numbers`;
+    });
 }
 
-function updateProgress(current, total) {
-    const progressFill = document.getElementById('progressFill');
-    const progressText = document.getElementById('progressText');
-    
-    if (!progressFill || !progressText) return;
-    
-    const percentage = Math.round((current / total) * 100);
-    progressFill.style.width = percentage + '%';
-    progressText.textContent = `${current}/${total} (${percentage}%)`;
-}
-
-function addResult(data) {
-    const resultsContainer = document.getElementById('results');
-    if (!resultsContainer) return;
-    
-    // Remove empty state
-    const emptyState = resultsContainer.querySelector('.empty-state');
-    if (emptyState) {
-        emptyState.remove();
+function clearInput() {
+    if (inputArea) {
+        inputArea.value = '';
+        document.getElementById('inputCount').innerText = `0 numbers`;
     }
-    
-    const resultDiv = document.createElement('div');
-    resultDiv.className = 'result-item';
-    
-    let badges = '';
-    if (data.isVerified) {
-        badges += '<span class="badge badge-verified">✅ Verified</span>';
-    }
-    if (data.isMetaBusiness) {
-        badges += '<span class="badge badge-meta">💼 Meta Business</span>';
-    } else if (data.isBusiness) {
-        badges += '<span class="badge badge-business">🏢 Business</span>';
-    }
-    
-    const numberStr = String(data.number);
-    const initial = numberStr.charAt(numberStr.length - 2).toUpperCase() || '?';
-    
-    resultDiv.innerHTML = `
-        <div class="result-avatar">${initial}</div>
-        <div class="result-info">
-            <div class="result-number">+${data.number}</div>
-            ${data.bio ? `<div class="result-bio">${escapeHtml(data.bio)}</div>` : '<div class="result-bio" style="color: var(--text-secondary); font-style: italic;">No bio</div>'}
-        </div>
-        <div class="result-badges">${badges}</div>
-    `;
-    
-    resultsContainer.insertBefore(resultDiv, resultsContainer.firstChild);
 }
 
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// ============================================
+// SCANNING FUNCTIONS
+// ============================================
 
-async function startCheck() {
+async function startScan() {
     if (!isConnected) {
-        alert('WhatsApp belum terhubung! Scan QR code terlebih dahulu.');
+        alert("Please connect your WhatsApp device first!");
         return;
     }
     
-    const numberInput = document.getElementById('numberInput');
-    if (!numberInput) return;
+    const raw = inputArea.value;
+    currentNumbers = raw.split('\n').filter(n => n.trim() !== '').map(n => n.trim());
     
-    const input = numberInput.value.trim();
-    if (!input) {
-        alert('Masukkan nomor WhatsApp terlebih dahulu!');
+    if (currentNumbers.length === 0) {
+        alert("Please enter phone numbers to check.");
         return;
     }
     
-    const numbers = input.split('\n').filter(n => n.trim()).map(n => n.trim());
-    if (numbers.length === 0) {
-        alert('Tidak ada nomor yang valid!');
-        return;
-    }
-    
-    if (numbers.length > 100) {
-        if (!confirm(`Anda akan mengecek ${numbers.length} nomor. Ini mungkin memakan waktu lama. Lanjutkan?`)) {
+    if (currentNumbers.length > 100) {
+        if (!confirm(`You are about to check ${currentNumbers.length} numbers. This may take a while. Continue?`)) {
             return;
         }
     }
     
-    isChecking = true;
-    stats = { total: numbers.length, registered: 0, bio: 0, business: 0, verified: 0, metaBusiness: 0 };
-    results = [];
+    // UI Updates
+    isScanning = true;
+    document.getElementById('btnStart').disabled = true;
+    document.getElementById('btnStart').classList.add('opacity-50', 'cursor-not-allowed');
+    document.getElementById('btnStop').disabled = false;
+    document.getElementById('btnStop').classList.remove('bg-slate-800', 'text-slate-400', 'cursor-not-allowed');
+    document.getElementById('btnStop').classList.add('bg-red-500/20', 'text-red-400', 'hover:bg-red-500/30');
+    document.getElementById('progressArea').classList.remove('hidden');
+    document.getElementById('resultsList').innerHTML = ''; // Clear previous
     
-    const resultsContainer = document.getElementById('results');
-    if (resultsContainer) resultsContainer.innerHTML = '';
-    
+    // Reset Stats
+    stats = { total: 0, registered: 0, bio: 0, business: 0, verified: 0, metaBusiness: 0 };
     updateStats();
     
-    const checkBtn = document.getElementById('checkBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    if (checkBtn) checkBtn.disabled = true;
-    if (stopBtn) stopBtn.disabled = false;
+    let index = 0;
+    const total = currentNumbers.length;
     
-    let processed = 0;
-    
-    for (const number of numbers) {
-        if (!isChecking) break;
+    // Process numbers one by one
+    for (let i = 0; i < total; i++) {
+        if (!isScanning) break;
         
-        const result = await checkWhatsAppNumber(number);
+        const num = currentNumbers[i];
+        await processNumber(num, i + 1, total);
         
-        if (result.error) {
-            console.error('Error checking:', number, result.message);
-        } else if (result.registered) {
-            stats.registered++;
-            if (result.bio) stats.bio++;
-            if (result.isBusiness) stats.business++;
-            if (result.isVerified) stats.verified++;
-            if (result.isMetaBusiness) stats.metaBusiness++;
-            
-            if (result.isBusiness || result.bio) {
-                addResult(result);
-            }
-        }
+        // Update Progress
+        const percent = Math.round(((i + 1) / total) * 100);
+        document.getElementById('progressBar').style.width = `${percent}%`;
+        document.getElementById('progressPercent').innerText = `${percent}%`;
+        document.getElementById('currentNumber').innerText = `Checking: ${num}`;
         
-        processed++;
-        updateStats();
-        updateProgress(processed, numbers.length);
-        
-        // Delay untuk menghindari rate limit
+        // Delay to avoid rate limit
         await new Promise(resolve => setTimeout(resolve, 1500));
     }
     
-    if (checkBtn) checkBtn.disabled = false;
-    if (stopBtn) stopBtn.disabled = true;
-    isChecking = false;
-    
-    alert(`Pengecekan selesai!\n\nTotal: ${stats.total}\nTerdaftar: ${stats.registered}\nPunya Bio: ${stats.bio}\nBusiness: ${stats.business}`);
+    if (isScanning) {
+        stopScan();
+        alert(`Scan completed!\n\nTotal: ${stats.total}\nRegistered: ${stats.registered}\nWith Bio: ${stats.bio}\nBusiness: ${stats.business}`);
+    }
 }
 
-function stopCheck() {
-    isChecking = false;
-    const checkBtn = document.getElementById('checkBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    if (checkBtn) checkBtn.disabled = false;
-    if (stopBtn) stopBtn.disabled = true;
+async function processNumber(number, current, total) {
+    stats.total = current;
+    
+    // Call real API
+    const result = await safeFetch(`${API_URL}/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ number })
+    });
+    
+    if (!result.success) {
+        console.error('Check failed for', number, result.error);
+        updateStats();
+        return;
+    }
+    
+    const data = result.data;
+    
+    if (data.registered) {
+        stats.registered++;
+        if (data.bio) stats.bio++;
+        if (data.isBusiness) stats.business++;
+        if (data.isVerified) stats.verified++;
+        if (data.isMetaBusiness) stats.metaBusiness++;
+        
+        // Create Result Element
+        const resultHTML = `
+            <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-3 flex items-center gap-3 animate-fade-in hover:bg-slate-800 transition-colors">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-600 flex items-center justify-center text-xs font-bold text-white">
+                    ${number.substring(number.length - 2)}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-medium text-white truncate">+${number}</span>
+                        ${data.isVerified ? '<i class="fa-solid fa-circle-check text-brand-secondary text-xs" title="Verified"></i>' : ''}
+                    </div>
+                    <p class="text-xs text-slate-400 truncate">${data.bio || "No Bio"}</p>
+                </div>
+                ${data.isBusiness ? '<span class="px-2 py-1 rounded bg-brand-purple/20 text-brand-purple text-[10px] font-bold uppercase">Biz</span>' : ''}
+                ${data.isMetaBusiness ? '<span class="px-2 py-1 rounded bg-brand-pink/20 text-brand-pink text-[10px] font-bold uppercase">Meta</span>' : ''}
+            </div>
+        `;
+        
+        const list = document.getElementById('resultsList');
+        
+        // Remove empty state if exists
+        if (list.children.length > 0 && list.children[0].innerText.includes('No data')) {
+            list.innerHTML = '';
+        }
+        
+        list.insertAdjacentHTML('afterbegin', resultHTML);
+        
+        // Animate entry
+        if (typeof gsap !== 'undefined') {
+            gsap.from(list.firstElementChild, {x: -20, opacity: 0, duration: 0.3});
+        }
+    }
+    
+    updateStats();
 }
 
-// Enter key support
-document.addEventListener('DOMContentLoaded', () => {
-    const usernameInput = document.getElementById('username');
-    const passwordInput = document.getElementById('password');
+function stopScan() {
+    isScanning = false;
     
-    if (usernameInput) {
-        usernameInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') login();
-        });
+    document.getElementById('btnStart').disabled = false;
+    document.getElementById('btnStart').classList.remove('opacity-50', 'cursor-not-allowed');
+    document.getElementById('btnStop').disabled = true;
+    document.getElementById('btnStop').classList.add('bg-slate-800', 'text-slate-400', 'cursor-not-allowed');
+    document.getElementById('btnStop').classList.remove('bg-red-500/20', 'text-red-400', 'hover:bg-red-500/30');
+    
+    document.getElementById('currentNumber').innerText = "Completed";
+    document.getElementById('currentNumber').classList.add('text-brand-accent');
+}
+
+function updateStats() {
+    document.getElementById('statTotal').innerText = stats.total;
+    document.getElementById('statRegistered').innerText = stats.registered;
+    document.getElementById('statBio').innerText = stats.bio;
+    document.getElementById('statBusiness').innerText = stats.business;
+}
+
+function exportResults() {
+    if (stats.total === 0) {
+        alert("No data to export");
+        return;
     }
     
-    if (passwordInput) {
-        passwordInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') login();
-        });
-    }
+    // Create CSV
+    let csv = "Number,Registered,Has Bio,Business,Verified,Meta Business,Bio Text\n";
+    
+    const resultElements = document.querySelectorAll('#resultsList > div');
+    resultElements.forEach(el => {
+        const number = el.querySelector('.text-white').textContent.replace('+', '');
+        const bio = el.querySelector('.text-slate-400').textContent;
+        const isBiz = el.querySelector('.uppercase')?.textContent.includes('Biz') || false;
+        const isMeta = el.querySelector('.uppercase')?.textContent.includes('Meta') || false;
+        const isVerified = el.querySelector('.fa-circle-check') !== null;
+        
+        csv += `${number},Yes,${bio !== 'No Bio' ? 'Yes' : 'No'},${isBiz ? 'Yes' : 'No'},${isVerified ? 'Yes' : 'No'},${isMeta ? 'Yes' : 'No'},"${bio}"\n`;
+    });
+    
+    // Download
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `whatsapp-check-${Date.now()}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+// ============================================
+// INITIALIZATION
+// ============================================
+
+window.addEventListener('DOMContentLoaded', () => {
+    console.log('[DEBUG] App.js loaded');
     
     // Check auth status
     checkAuthStatus();
