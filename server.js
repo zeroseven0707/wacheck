@@ -488,14 +488,16 @@ app.post('/api/check', requireAuth, async (req, res) => {
             bio: '',
             isBusiness: false,
             isVerified: false,
+            isVerifiedGreen: false,
+            isVerifiedBlue: false,
             isMetaBusiness: false,
+            isEnterprise: false,
             businessInfo: null,
             profilePicture: null,
             profilePictureHD: null,
             lastSeen: null,
             pushName: '',
             verifiedName: '',
-            isEnterprise: false,
             deviceInfo: null,
             privacySettings: {}
         };
@@ -517,9 +519,40 @@ app.post('/api/check', requireAuth, async (req, res) => {
             
             if (businessProfile) {
                 responseData.isBusiness = true;
-                responseData.isVerified = businessProfile.verified_level === 'verified' || 
-                                         businessProfile.verified_level === 'official';
-                responseData.isMetaBusiness = responseData.isVerified;
+                
+                // Log semua field untuk debugging
+                console.log(`[CHECK] Full business profile:`, JSON.stringify(businessProfile, null, 2));
+                
+                // Deteksi level verifikasi
+                const verifiedLevel = businessProfile.verified_level || 'none';
+                
+                // Cek juga field alternatif yang mungkin ada
+                const isVerifiedAlt = businessProfile.is_verified || false;
+                const verifiedName = businessProfile.verified_name || null;
+                
+                console.log(`[CHECK] Verification details:`, {
+                    verified_level: verifiedLevel,
+                    is_verified: isVerifiedAlt,
+                    verified_name: verifiedName
+                });
+                
+                // Centang Hijau = verified
+                // Centang Biru = official
+                responseData.isVerifiedGreen = verifiedLevel === 'verified';
+                responseData.isVerifiedBlue = verifiedLevel === 'official' || verifiedLevel === 'blue_verified';
+                
+                // Jika ada verified_name, kemungkinan besar ini official/blue
+                if (verifiedName && !responseData.isVerifiedBlue) {
+                    console.log(`[CHECK] Has verified_name, marking as blue verified`);
+                    responseData.isVerifiedBlue = true;
+                }
+                
+                // Backward compatibility
+                responseData.isVerified = verifiedLevel === 'verified' || verifiedLevel === 'official' || isVerifiedAlt;
+                responseData.isEnterprise = responseData.isVerifiedBlue;
+                
+                // Meta Verified (berbeda dari verified biasa)
+                responseData.isMetaBusiness = false; // Ini untuk Meta Verified berbayar (jarang)
                 
                 // Extract detailed business info
                 responseData.businessInfo = {
@@ -528,14 +561,19 @@ app.post('/api/check', requireAuth, async (req, res) => {
                     email: businessProfile.email || '',
                     website: businessProfile.website || [],
                     address: businessProfile.address || '',
-                    verifiedLevel: businessProfile.verified_level || 'none',
+                    verifiedLevel: verifiedLevel,
+                    verifiedName: verifiedName,
+                    isVerified: isVerifiedAlt,
                     catalogCount: businessProfile.catalog_count || 0,
                     hasCatalog: (businessProfile.catalog_count || 0) > 0
                 };
                 
                 console.log(`[CHECK] Business profile found:`, {
                     category: responseData.businessInfo.category,
-                    verified: responseData.isVerified,
+                    verifiedLevel: verifiedLevel,
+                    verifiedGreen: responseData.isVerifiedGreen,
+                    verifiedBlue: responseData.isVerifiedBlue,
+                    verifiedName: verifiedName,
                     catalog: responseData.businessInfo.hasCatalog,
                     catalogCount: responseData.businessInfo.catalogCount
                 });
@@ -566,28 +604,53 @@ app.post('/api/check', requireAuth, async (req, res) => {
             const contact = await session.sock.getContact(jid);
             if (contact) {
                 if (contact.notify) responseData.pushName = contact.notify;
-                if (contact.verifiedName) responseData.verifiedName = contact.verifiedName;
+                if (contact.verifiedName) {
+                    responseData.verifiedName = contact.verifiedName;
+                    // Jika ada verifiedName di contact, ini kemungkinan besar official/blue
+                    if (!responseData.isVerifiedBlue) {
+                        console.log(`[CHECK] Found verifiedName in contact, marking as blue verified`);
+                        responseData.isVerifiedBlue = true;
+                        responseData.isEnterprise = true;
+                    }
+                }
                 if (contact.name) responseData.contactName = contact.name;
+                
+                // Log contact info untuk debugging
+                console.log(`[CHECK] Contact info:`, {
+                    notify: contact.notify,
+                    verifiedName: contact.verifiedName,
+                    name: contact.name
+                });
             }
         } catch (e) {
-            console.log(`[CHECK] Contact info not available`);
+            console.log(`[CHECK] Contact info not available: ${e.message}`);
         }
 
-        // 5. Cek Enterprise/Official Business Account
-        try {
-            if (responseData.isBusiness && responseData.businessInfo) {
-                responseData.isEnterprise = responseData.businessInfo.verifiedLevel === 'official';
-            }
-        } catch (e) {
-            console.log(`[CHECK] Enterprise check failed`);
-        }
-
-        // 6. Ambil informasi presence (online/offline/typing)
+        // 5. Ambil informasi presence (online/offline/typing)
         try {
             await session.sock.presenceSubscribe(jid);
             // Note: presence updates come via events, not direct query
         } catch (e) {
             console.log(`[CHECK] Presence subscription failed`);
+        }
+        
+        // 6. Cek metadata dari store untuk info verifikasi tambahan
+        try {
+            // Baileys menyimpan metadata di store
+            const metadata = session.sock.store?.contacts?.[jid];
+            if (metadata) {
+                console.log(`[CHECK] Store metadata:`, JSON.stringify(metadata, null, 2));
+                
+                // Cek field verifikasi di metadata
+                if (metadata.verifiedName && !responseData.isVerifiedBlue) {
+                    console.log(`[CHECK] Found verifiedName in store metadata`);
+                    responseData.isVerifiedBlue = true;
+                    responseData.isEnterprise = true;
+                    responseData.verifiedName = metadata.verifiedName;
+                }
+            }
+        } catch (e) {
+            console.log(`[CHECK] Store metadata check failed: ${e.message}`);
         }
 
         // 7. Cek privacy settings (best effort)
@@ -605,13 +668,16 @@ app.post('/api/check', requireAuth, async (req, res) => {
             hasBio: !!responseData.bio,
             isBusiness: responseData.isBusiness,
             isVerified: responseData.isVerified,
+            isVerifiedGreen: responseData.isVerifiedGreen,
+            isVerifiedBlue: responseData.isVerifiedBlue,
             isEnterprise: responseData.isEnterprise,
+            verifiedName: responseData.verifiedName || 'N/A',
+            verifiedLevel: responseData.businessInfo?.verifiedLevel || 'N/A',
             hasCatalog: responseData.businessInfo?.hasCatalog || false,
             catalogCount: responseData.businessInfo?.catalogCount || 0,
             hasProfilePicture: !!responseData.profilePicture,
             hasHDPicture: !!responseData.profilePictureHD,
-            pushName: responseData.pushName || 'N/A',
-            verifiedName: responseData.verifiedName || 'N/A'
+            pushName: responseData.pushName || 'N/A'
         });
 
         res.json(responseData);

@@ -337,46 +337,153 @@
             <div class="lg:col-span-8 space-y-6">
                 
                 <!-- Stats Grid -->
-                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-                    <!-- Total -->
-                    <div class="glass-panel p-4 rounded-2xl border-l-4 border-slate-500">
-                        <p class="text-xs text-slate-400 uppercase font-bold">Total</p>
-                        <p class="text-2xl font-display font-bold text-white mt-1" id="statTotal">0</p>
+                <!-- Stats Grid - 2 Rows -->
+                <div class="space-y-4">
+                    <!-- Row 1: Main Stats -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <!-- Total -->
+                        <div class="glass-panel p-4 rounded-2xl border-l-4 border-slate-500 group relative cursor-help">
+                            <p class="text-xs text-slate-400 uppercase font-bold">Total Checked</p>
+                            <p class="text-2xl font-display font-bold text-white mt-1" id="statTotal">0</p>
+                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 border border-slate-700">
+                                Total nomor yang sudah dicek
+                            </div>
+                        </div>
+                        <!-- Registered -->
+                        <div class="glass-panel p-4 rounded-2xl border-l-4 border-brand-accent group relative cursor-help">
+                            <p class="text-xs text-slate-400 uppercase font-bold">Registered</p>
+                            <p class="text-2xl font-display font-bold text-brand-accent mt-1" id="statRegistered">0</p>
+                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 border border-slate-700">
+                                Nomor terdaftar di WhatsApp
+                            </div>
+                        </div>
+                        <!-- With Bio -->
+                        <div class="glass-panel p-4 rounded-2xl border-l-4 border-brand-secondary group relative cursor-help">
+                            <p class="text-xs text-slate-400 uppercase font-bold">Has Bio</p>
+                            <p class="text-2xl font-display font-bold text-brand-secondary mt-1" id="statBio">0</p>
+                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 border border-slate-700">
+                                Akun dengan status/bio
+                            </div>
+                        </div>
+                        <!-- Business -->
+                        <div class="glass-panel p-4 rounded-2xl border-l-4 border-brand-purple group relative cursor-help">
+                            <p class="text-xs text-slate-400 uppercase font-bold">Business</p>
+                            <p class="text-2xl font-display font-bold text-brand-purple mt-1" id="statBusiness">0</p>
+                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 border border-slate-700">
+                                Akun WhatsApp Business
+                            </div>
+                        </div>
                     </div>
-                    <!-- Registered -->
-                    <div class="glass-panel p-4 rounded-2xl border-l-4 border-brand-accent">
-                        <p class="text-xs text-slate-400 uppercase font-bold">Registered</p>
-                        <p class="text-2xl font-display font-bold text-brand-accent mt-1" id="statRegistered">0</p>
+                    
+                    <!-- Row 2: Additional Stats -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <!-- Verified Green -->
+                        <div class="glass-panel p-4 rounded-2xl border-l-4 border-green-500 group relative cursor-help">
+                            <p class="text-xs text-slate-400 uppercase font-bold flex items-center gap-1">
+                                <i class="fa-solid fa-circle-check text-green-500"></i>
+                                Green ✓
+                            </p>
+                            <p class="text-2xl font-display font-bold text-green-500 mt-1" id="statVerified">0</p>
+                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none w-48 text-center z-10 border border-slate-700">
+                                Bisnis terverifikasi (centang hijau)
+                            </div>
+                        </div>
+                        <!-- Official Blue -->
+                        <div class="glass-panel p-4 rounded-2xl border-l-4 border-blue-500 group relative cursor-help">
+                            <p class="text-xs text-slate-400 uppercase font-bold flex items-center gap-1">
+                                <i class="fa-solid fa-circle-check text-blue-500"></i>
+                                Blue ✓
+                            </p>
+                            <p class="text-2xl font-display font-bold text-blue-500 mt-1" id="statEnterprise">0</p>
+                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none w-56 text-center z-10 border border-slate-700">
+                                Akun resmi perusahaan besar/brand terkenal (centang biru)
+                            </div>
+                        </div>
+                        <!-- Has Photo -->
+                        <div class="glass-panel p-4 rounded-2xl border-l-4 border-purple-500 group relative cursor-help">
+                            <p class="text-xs text-slate-400 uppercase font-bold flex items-center gap-1">
+                                <i class="fa-solid fa-image text-purple-500"></i>
+                                Has Photo
+                            </p>
+                            <p class="text-2xl font-display font-bold text-purple-500 mt-1" id="statHasPhoto">0</p>
+                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 border border-slate-700">
+                                Akun dengan foto profil
+                            </div>
+                        </div>
+                        <!-- Privacy Hidden -->
+                        <div class="glass-panel p-4 rounded-2xl border-l-4 border-red-500 group relative cursor-help">
+                            <p class="text-xs text-slate-400 uppercase font-bold flex items-center gap-1">
+                                <i class="fa-solid fa-eye-slash text-red-500"></i>
+                                Private
+                            </p>
+                            <p class="text-2xl font-display font-bold text-red-500 mt-1" id="statPrivacyHidden">0</p>
+                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none w-48 text-center z-10 border border-slate-700">
+                                Akun dengan privacy settings (foto/status disembunyikan)
+                            </div>
+                        </div>
                     </div>
-                    <!-- With Bio -->
-                    <div class="glass-panel p-4 rounded-2xl border-l-4 border-brand-secondary">
-                        <p class="text-xs text-slate-400 uppercase font-bold">Has Bio</p>
-                        <p class="text-2xl font-display font-bold text-brand-secondary mt-1" id="statBio">0</p>
-                    </div>
-                    <!-- Business -->
-                    <div class="glass-panel p-4 rounded-2xl border-l-4 border-brand-purple">
-                        <p class="text-xs text-slate-400 uppercase font-bold">Business</p>
-                        <p class="text-2xl font-display font-bold text-brand-purple mt-1" id="statBusiness">0</p>
-                    </div>
-                    <!-- Verified -->
-                    <div class="glass-panel p-4 rounded-2xl border-l-4 border-yellow-500">
-                        <p class="text-xs text-slate-400 uppercase font-bold">Verified</p>
-                        <p class="text-2xl font-display font-bold text-yellow-500 mt-1" id="statVerified">0</p>
-                    </div>
-                    <!-- Enterprise -->
-                    <div class="glass-panel p-4 rounded-2xl border-l-4 border-orange-500">
-                        <p class="text-xs text-slate-400 uppercase font-bold">Enterprise</p>
-                        <p class="text-2xl font-display font-bold text-orange-500 mt-1" id="statEnterprise">0</p>
-                    </div>
-                    <!-- Has Photo -->
-                    <div class="glass-panel p-4 rounded-2xl border-l-4 border-blue-500">
-                        <p class="text-xs text-slate-400 uppercase font-bold">Has Photo</p>
-                        <p class="text-2xl font-display font-bold text-blue-500 mt-1" id="statHasPhoto">0</p>
-                    </div>
-                    <!-- Privacy Hidden -->
-                    <div class="glass-panel p-4 rounded-2xl border-l-4 border-red-500">
-                        <p class="text-xs text-slate-400 uppercase font-bold">Private</p>
-                        <p class="text-2xl font-display font-bold text-red-500 mt-1" id="statPrivacyHidden">0</p>
+                </div>
+                
+                <!-- Info Legend -->
+                <div class="glass-panel p-4 rounded-2xl">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                            <i class="fa-solid fa-info text-blue-400"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="font-bold text-sm text-white mb-2">Account Types & Verification Levels</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                                <div class="flex items-start gap-2">
+                                    <i class="fa-solid fa-user text-slate-400 mt-0.5"></i>
+                                    <div>
+                                        <span class="font-semibold text-slate-300">Personal:</span>
+                                        <span class="text-slate-400"> Akun WhatsApp biasa</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-2">
+                                    <i class="fa-solid fa-briefcase text-brand-purple mt-0.5"></i>
+                                    <div>
+                                        <span class="font-semibold text-brand-purple">Business:</span>
+                                        <span class="text-slate-400"> Akun WhatsApp Business standar</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-2">
+                                    <i class="fa-solid fa-circle-check text-green-400 mt-0.5"></i>
+                                    <div>
+                                        <span class="font-semibold text-green-400">Green Check (✓):</span>
+                                        <span class="text-slate-400"> Bisnis terverifikasi WhatsApp</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-2">
+                                    <i class="fa-solid fa-circle-check text-blue-400 mt-0.5"></i>
+                                    <div>
+                                        <span class="font-semibold text-blue-400">Blue Check (✓):</span>
+                                        <span class="text-slate-400"> Akun resmi perusahaan besar/brand terkenal</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-2">
+                                    <i class="fa-solid fa-certificate text-yellow-400 mt-0.5"></i>
+                                    <div>
+                                        <span class="font-semibold text-yellow-400">Meta Verified:</span>
+                                        <span class="text-slate-400"> Verifikasi berbayar dari Meta</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-2">
+                                    <i class="fa-solid fa-building text-orange-400 mt-0.5"></i>
+                                    <div>
+                                        <span class="font-semibold text-orange-400">Official:</span>
+                                        <span class="text-slate-400"> Sama dengan Blue Check (level tertinggi)</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-2">
+                                    <i class="fa-solid fa-eye-slash text-red-400 mt-0.5"></i>
+                                    <div>
+                                        <span class="font-semibold text-red-400">Private:</span>
+                                        <span class="text-slate-400"> Privacy settings aktif (foto/status hidden)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

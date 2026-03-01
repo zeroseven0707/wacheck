@@ -422,7 +422,17 @@ async function startScan() {
     document.getElementById('resultsList').innerHTML = ''; // Clear previous
     
     // Reset Stats
-    stats = { total: 0, registered: 0, bio: 0, business: 0, verified: 0, metaBusiness: 0 };
+    stats = { 
+        total: 0, 
+        registered: 0, 
+        bio: 0, 
+        business: 0, 
+        verified: 0, 
+        metaBusiness: 0,
+        enterprise: 0,
+        hasPhoto: 0,
+        privacyHidden: 0
+    };
     updateStats();
     
     const total = currentNumbers.length;
@@ -510,7 +520,7 @@ async function processNumber(number, current, total) {
         if (data.isBusiness) stats.business++;
         if (data.isVerified) stats.verified++;
         if (data.isMetaBusiness) stats.metaBusiness++;
-        if (data.isEnterprise) stats.enterprise++;
+        if (data.isVerifiedBlue) stats.enterprise++; // Centang Biru
         if (data.profilePicture) stats.hasPhoto++;
         if (data.privacySettings && (data.privacySettings.profilePicture === 'hidden' || data.privacySettings.status === 'hidden')) {
             stats.privacyHidden++;
@@ -524,11 +534,11 @@ async function processNumber(number, current, total) {
         if (data.isMetaBusiness) {
             badges.push('<span class="px-2 py-1 rounded bg-yellow-500/20 text-yellow-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-certificate"></i> Meta Verified</span>');
         }
-        if (data.isEnterprise) {
-            badges.push('<span class="px-2 py-1 rounded bg-orange-500/20 text-orange-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-building"></i> Enterprise</span>');
+        if (data.isVerifiedBlue) {
+            badges.push('<span class="px-2 py-1 rounded bg-blue-500/20 text-blue-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> Official (Blue)</span>');
         }
-        if (data.isVerified && !data.isMetaBusiness) {
-            badges.push('<span class="px-2 py-1 rounded bg-green-500/20 text-green-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> Verified</span>');
+        if (data.isVerifiedGreen && !data.isVerifiedBlue) {
+            badges.push('<span class="px-2 py-1 rounded bg-green-500/20 text-green-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> Verified (Green)</span>');
         }
         if (data.isBusiness) {
             badges.push('<span class="px-2 py-1 rounded bg-brand-purple/20 text-brand-purple text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-briefcase"></i> Business</span>');
@@ -537,7 +547,7 @@ async function processNumber(number, current, total) {
             badges.push(`<span class="px-2 py-1 rounded bg-blue-500/20 text-blue-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-store"></i> Catalog (${data.businessInfo.catalogCount})</span>`);
         }
         if (data.verifiedName) {
-            badges.push(`<span class="px-2 py-1 rounded bg-cyan-500/20 text-cyan-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-award"></i> Official</span>`);
+            badges.push(`<span class="px-2 py-1 rounded bg-cyan-500/20 text-cyan-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-award"></i> Official Name</span>`);
         }
         
         // Business info section
@@ -580,11 +590,20 @@ async function processNumber(number, current, total) {
             `);
         }
         
-        if (data.isEnterprise) {
+        if (data.isVerifiedBlue) {
             infoItems.push(`
-                <div class="flex items-center gap-1 text-yellow-400">
-                    <i class="fa-solid fa-building"></i>
-                    <span>Enterprise</span>
+                <div class="flex items-center gap-1 text-blue-400">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span>Official (Blue Check)</span>
+                </div>
+            `);
+        }
+        
+        if (data.isVerifiedGreen && !data.isVerifiedBlue) {
+            infoItems.push(`
+                <div class="flex items-center gap-1 text-green-400">
+                    <i class="fa-solid fa-shield-check"></i>
+                    <span>Verified (Green Check)</span>
                 </div>
             `);
         }
@@ -594,15 +613,6 @@ async function processNumber(number, current, total) {
                 <div class="flex items-center gap-1 text-brand-secondary">
                     <i class="fa-solid fa-message"></i>
                     <span>Has Status</span>
-                </div>
-            `);
-        }
-        
-        if (data.isVerified) {
-            infoItems.push(`
-                <div class="flex items-center gap-1 text-green-400">
-                    <i class="fa-solid fa-shield-check"></i>
-                    <span>Verified</span>
                 </div>
             `);
         }
@@ -682,14 +692,17 @@ async function processNumber(number, current, total) {
                                 <i class="fa-solid fa-briefcase text-white text-[8px]"></i>
                             </div>
                         ` : ''}
-                        ${data.isVerified || data.isMetaBusiness ? `
-                            <div class="absolute -top-1 -right-1 w-5 h-5 ${data.isMetaBusiness ? 'bg-yellow-500' : 'bg-blue-500'} rounded-full flex items-center justify-center border-2 border-slate-800">
+                        ${data.isVerifiedBlue ? `
+                            <div class="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center border-2 border-slate-800">
                                 <i class="fa-solid fa-check text-white text-[8px]"></i>
                             </div>
-                        ` : ''}
-                        ${data.isEnterprise ? `
-                            <div class="absolute -top-1 -left-1 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center border-2 border-slate-800">
-                                <i class="fa-solid fa-building text-white text-[8px]"></i>
+                        ` : data.isVerifiedGreen ? `
+                            <div class="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center border-2 border-slate-800">
+                                <i class="fa-solid fa-check text-white text-[8px]"></i>
+                            </div>
+                        ` : data.isMetaBusiness ? `
+                            <div class="absolute -top-1 -right-1 w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center border-2 border-slate-800">
+                                <i class="fa-solid fa-check text-white text-[8px]"></i>
                             </div>
                         ` : ''}
                     </div>
@@ -701,7 +714,9 @@ async function processNumber(number, current, total) {
                             </button>
                             ${data.isBusiness ? '<span class="px-1.5 py-0.5 bg-brand-purple/20 text-brand-purple text-[9px] font-bold rounded border border-brand-purple/30">BUSINESS</span>' : '<span class="px-1.5 py-0.5 bg-slate-700/50 text-slate-400 text-[9px] font-bold rounded">PERSONAL</span>'}
                             ${data.isMetaBusiness ? '<span class="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 text-[9px] font-bold rounded border border-yellow-500/30 flex items-center gap-1"><i class="fa-solid fa-certificate text-[8px]"></i>META</span>' : ''}
-                            ${data.isVerified && !data.isMetaBusiness ? '<span class="px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[9px] font-bold rounded border border-blue-500/30 flex items-center gap-1"><i class="fa-solid fa-shield-check text-[8px]"></i>VERIFIED</span>' : ''}
+                            ${data.isVerifiedBlue ? '<span class="px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[9px] font-bold rounded border border-blue-500/30 flex items-center gap-1"><i class="fa-solid fa-circle-check text-[8px]"></i>BLUE ✓</span>' : ''}
+                            ${data.isVerifiedGreen && !data.isVerifiedBlue ? '<span class="px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[9px] font-bold rounded border border-green-500/30 flex items-center gap-1"><i class="fa-solid fa-circle-check text-[8px]"></i>GREEN ✓</span>' : ''}
+                            ${data.isEnterprise ? '<span class="px-1.5 py-0.5 bg-orange-500/20 text-orange-400 text-[9px] font-bold rounded border border-orange-500/30 flex items-center gap-1"><i class="fa-solid fa-building text-[8px]"></i>OFFICIAL</span>' : ''}
                         </div>
                         
                         ${data.pushName ? `<p class="text-xs text-slate-400 mb-1"><i class="fa-solid fa-user text-[10px] mr-1"></i>${escapeHtml(data.pushName)}</p>` : ''}
@@ -804,14 +819,26 @@ function stopScan() {
 }
 
 function updateStats() {
-    document.getElementById('statTotal').innerText = stats.total;
-    document.getElementById('statRegistered').innerText = stats.registered;
-    document.getElementById('statBio').innerText = stats.bio;
-    document.getElementById('statBusiness').innerText = stats.business;
-    document.getElementById('statVerified').innerText = stats.verified;
-    document.getElementById('statEnterprise').innerText = stats.enterprise;
-    document.getElementById('statHasPhoto').innerText = stats.hasPhoto;
-    document.getElementById('statPrivacyHidden').innerText = stats.privacyHidden;
+    const elements = {
+        statTotal: stats.total || 0,
+        statRegistered: stats.registered || 0,
+        statBio: stats.bio || 0,
+        statBusiness: stats.business || 0,
+        statVerified: stats.verified || 0,
+        statEnterprise: stats.enterprise || 0,
+        statHasPhoto: stats.hasPhoto || 0,
+        statPrivacyHidden: stats.privacyHidden || 0
+    };
+    
+    // Update each element safely
+    Object.keys(elements).forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.innerText = elements[id];
+        } else {
+            console.warn(`[STATS] Element #${id} not found`);
+        }
+    });
 }
 
 function exportResults() {
@@ -876,6 +903,9 @@ function copyNumber(number) {
 
 window.addEventListener('DOMContentLoaded', () => {
     console.log('[DEBUG] App.js loaded');
+    
+    // Initialize stats display
+    updateStats();
     
     // Check auth status
     checkAuthStatus();
