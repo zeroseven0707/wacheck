@@ -21,7 +21,10 @@ let stats = {
     bio: 0,
     business: 0,
     verified: 0,
-    metaBusiness: 0
+    metaBusiness: 0,
+    enterprise: 0,
+    hasPhoto: 0,
+    privacyHidden: 0
 };
 
 // ============================================
@@ -487,21 +490,31 @@ async function processNumber(number, current, total) {
     });
     
     if (!result.success) {
-        console.error('Check failed for', number, result.error);
+        console.error('[PROCESS] Check failed for', number, result.error);
         return null;
     }
     
     const data = result.data;
     
+    // Debug logging
+    console.log(`[PROCESS] Number: ${number}, Registered: ${data.registered}, Business: ${data.isBusiness}, Bio: ${data.bio ? 'Yes' : 'No'}`);
+    
     // Update stats (thread-safe increment)
     stats.total++;
     
     if (data.registered) {
+        console.log(`[PROCESS] Adding ${number} to results (Business: ${data.isBusiness})`);
+
         stats.registered++;
         if (data.bio) stats.bio++;
         if (data.isBusiness) stats.business++;
         if (data.isVerified) stats.verified++;
         if (data.isMetaBusiness) stats.metaBusiness++;
+        if (data.isEnterprise) stats.enterprise++;
+        if (data.profilePicture) stats.hasPhoto++;
+        if (data.privacySettings && (data.privacySettings.profilePicture === 'hidden' || data.privacySettings.status === 'hidden')) {
+            stats.privacyHidden++;
+        }
         
         // Update stats display
         updateStats();
@@ -511,6 +524,9 @@ async function processNumber(number, current, total) {
         if (data.isMetaBusiness) {
             badges.push('<span class="px-2 py-1 rounded bg-yellow-500/20 text-yellow-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-certificate"></i> Meta Verified</span>');
         }
+        if (data.isEnterprise) {
+            badges.push('<span class="px-2 py-1 rounded bg-orange-500/20 text-orange-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-building"></i> Enterprise</span>');
+        }
         if (data.isVerified && !data.isMetaBusiness) {
             badges.push('<span class="px-2 py-1 rounded bg-green-500/20 text-green-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> Verified</span>');
         }
@@ -519,6 +535,9 @@ async function processNumber(number, current, total) {
         }
         if (data.businessInfo?.hasCatalog) {
             badges.push(`<span class="px-2 py-1 rounded bg-blue-500/20 text-blue-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-store"></i> Catalog (${data.businessInfo.catalogCount})</span>`);
+        }
+        if (data.verifiedName) {
+            badges.push(`<span class="px-2 py-1 rounded bg-cyan-500/20 text-cyan-400 text-[10px] font-bold uppercase flex items-center gap-1"><i class="fa-solid fa-award"></i> Official</span>`);
         }
         
         // Business info section
@@ -561,6 +580,15 @@ async function processNumber(number, current, total) {
             `);
         }
         
+        if (data.isEnterprise) {
+            infoItems.push(`
+                <div class="flex items-center gap-1 text-yellow-400">
+                    <i class="fa-solid fa-building"></i>
+                    <span>Enterprise</span>
+                </div>
+            `);
+        }
+        
         if (data.bio) {
             infoItems.push(`
                 <div class="flex items-center gap-1 text-brand-secondary">
@@ -597,6 +625,44 @@ async function processNumber(number, current, total) {
             `);
         }
         
+        if (data.verifiedName) {
+            infoItems.push(`
+                <div class="flex items-center gap-1 text-blue-400">
+                    <i class="fa-solid fa-certificate"></i>
+                    <span>${escapeHtml(data.verifiedName)}</span>
+                </div>
+            `);
+        }
+        
+        if (data.contactName) {
+            infoItems.push(`
+                <div class="flex items-center gap-1 text-slate-400">
+                    <i class="fa-solid fa-address-book"></i>
+                    <span>${escapeHtml(data.contactName)}</span>
+                </div>
+            `);
+        }
+        
+        // Privacy info
+        if (data.privacySettings) {
+            if (data.privacySettings.profilePicture === 'hidden') {
+                infoItems.push(`
+                    <div class="flex items-center gap-1 text-red-400">
+                        <i class="fa-solid fa-eye-slash"></i>
+                        <span>Photo Hidden</span>
+                    </div>
+                `);
+            }
+            if (data.privacySettings.status === 'hidden') {
+                infoItems.push(`
+                    <div class="flex items-center gap-1 text-red-400">
+                        <i class="fa-solid fa-lock"></i>
+                        <span>Status Hidden</span>
+                    </div>
+                `);
+            }
+        }
+        
         const resultHTML = `
             <div class="bg-slate-800/50 border ${data.isBusiness ? 'border-brand-purple/50' : 'border-slate-700'} rounded-xl p-4 hover:bg-slate-800 transition-all hover:border-brand-accent/30 group ${data.isBusiness ? 'bg-gradient-to-r from-purple-900/10 to-transparent' : ''}">
                 <div class="flex items-start gap-3">
@@ -616,21 +682,31 @@ async function processNumber(number, current, total) {
                                 <i class="fa-solid fa-briefcase text-white text-[8px]"></i>
                             </div>
                         ` : ''}
-                        ${data.isVerified ? `
-                            <div class="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center border-2 border-slate-800">
+                        ${data.isVerified || data.isMetaBusiness ? `
+                            <div class="absolute -top-1 -right-1 w-5 h-5 ${data.isMetaBusiness ? 'bg-yellow-500' : 'bg-blue-500'} rounded-full flex items-center justify-center border-2 border-slate-800">
                                 <i class="fa-solid fa-check text-white text-[8px]"></i>
+                            </div>
+                        ` : ''}
+                        ${data.isEnterprise ? `
+                            <div class="absolute -top-1 -left-1 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center border-2 border-slate-800">
+                                <i class="fa-solid fa-building text-white text-[8px]"></i>
                             </div>
                         ` : ''}
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1 flex-wrap">
                             <span class="text-sm font-semibold text-white">+${number}</span>
+                            <button onclick="copyNumber('${number}')" class="text-slate-500 hover:text-brand-accent transition-colors" title="Copy number">
+                                <i class="fa-solid fa-copy text-xs"></i>
+                            </button>
                             ${data.isBusiness ? '<span class="px-1.5 py-0.5 bg-brand-purple/20 text-brand-purple text-[9px] font-bold rounded border border-brand-purple/30">BUSINESS</span>' : '<span class="px-1.5 py-0.5 bg-slate-700/50 text-slate-400 text-[9px] font-bold rounded">PERSONAL</span>'}
                             ${data.isMetaBusiness ? '<span class="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 text-[9px] font-bold rounded border border-yellow-500/30 flex items-center gap-1"><i class="fa-solid fa-certificate text-[8px]"></i>META</span>' : ''}
                             ${data.isVerified && !data.isMetaBusiness ? '<span class="px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[9px] font-bold rounded border border-blue-500/30 flex items-center gap-1"><i class="fa-solid fa-shield-check text-[8px]"></i>VERIFIED</span>' : ''}
                         </div>
                         
                         ${data.pushName ? `<p class="text-xs text-slate-400 mb-1"><i class="fa-solid fa-user text-[10px] mr-1"></i>${escapeHtml(data.pushName)}</p>` : ''}
+                        ${data.verifiedName ? `<p class="text-xs text-blue-400 mb-1 font-semibold"><i class="fa-solid fa-certificate text-[10px] mr-1"></i>${escapeHtml(data.verifiedName)}</p>` : ''}
+                        ${data.contactName ? `<p class="text-xs text-slate-500 mb-1"><i class="fa-solid fa-address-book text-[10px] mr-1"></i>${escapeHtml(data.contactName)}</p>` : ''}
                         
                         ${data.bio ? `
                             <div class="bg-slate-900/50 rounded-lg p-2 mb-2 border border-slate-700/50">
@@ -647,9 +723,26 @@ async function processNumber(number, current, total) {
                         
                         ${businessSection}
                         
+                        ${data.privacySettings && (data.privacySettings.profilePicture === 'hidden' || data.privacySettings.status === 'hidden') ? `
+                            <div class="mt-2 p-2 bg-red-900/20 rounded-lg border border-red-700/30 space-y-1">
+                                <p class="text-[10px] font-bold text-red-400 uppercase tracking-wide mb-1"><i class="fa-solid fa-shield-halved mr-1"></i>Privacy Settings</p>
+                                ${data.privacySettings.profilePicture === 'hidden' ? `<p class="text-xs text-red-300"><i class="fa-solid fa-eye-slash text-[10px] mr-1"></i>Profile picture is hidden</p>` : ''}
+                                ${data.privacySettings.status === 'hidden' ? `<p class="text-xs text-red-300"><i class="fa-solid fa-lock text-[10px] mr-1"></i>Status/bio is hidden</p>` : ''}
+                            </div>
+                        ` : ''}
+                        
                         <div class="grid grid-cols-2 gap-2 text-[10px] mt-2">
                             ${infoItems.join('')}
                         </div>
+                        
+                        ${data.profilePictureHD ? `
+                            <div class="mt-2 pt-2 border-t border-slate-700/50">
+                                <a href="${data.profilePictureHD}" target="_blank" class="text-xs text-brand-accent hover:text-brand-secondary transition-colors flex items-center gap-1">
+                                    <i class="fa-solid fa-external-link"></i>
+                                    <span>View HD Profile Picture</span>
+                                </a>
+                            </div>
+                        ` : ''}
                         
                         ${data.jid ? `
                             <div class="mt-2 pt-2 border-t border-slate-700/50">
@@ -663,18 +756,34 @@ async function processNumber(number, current, total) {
         
         const list = document.getElementById('resultsList');
         
+        // Debug: Check if list exists
+        if (!list) {
+            console.error('[PROCESS] ERROR: resultsList element not found!');
+            return data;
+        }
+        
+        console.log(`[PROCESS] Inserting ${number} into DOM (Business: ${data.isBusiness}, Current children: ${list.children.length})`);
+        
         // Remove empty state if exists
         if (list.children.length > 0 && list.children[0].innerText.includes('No data')) {
             list.innerHTML = '';
         }
         
-        list.insertAdjacentHTML('afterbegin', resultHTML);
+        try {
+            list.insertAdjacentHTML('afterbegin', resultHTML);
+            console.log(`[PROCESS] Successfully inserted ${number}. New children count: ${list.children.length}`);
+        } catch (htmlError) {
+            console.error(`[PROCESS] ERROR inserting HTML for ${number}:`, htmlError);
+            console.error('[PROCESS] Problematic HTML:', resultHTML.substring(0, 200));
+            return data;
+        }
         
         // Animate entry
         if (typeof gsap !== 'undefined') {
             gsap.from(list.firstElementChild, {x: -20, opacity: 0, duration: 0.3});
         }
     } else {
+        console.log(`[PROCESS] Number ${number} NOT registered - skipping DOM insertion`);
         updateStats();
     }
     
@@ -700,6 +809,9 @@ function updateStats() {
     document.getElementById('statBio').innerText = stats.bio;
     document.getElementById('statBusiness').innerText = stats.business;
     document.getElementById('statVerified').innerText = stats.verified;
+    document.getElementById('statEnterprise').innerText = stats.enterprise;
+    document.getElementById('statHasPhoto').innerText = stats.hasPhoto;
+    document.getElementById('statPrivacyHidden').innerText = stats.privacyHidden;
 }
 
 function exportResults() {
@@ -730,6 +842,32 @@ function exportResults() {
     a.download = `whatsapp-check-${Date.now()}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Copy number to clipboard
+function copyNumber(number) {
+    navigator.clipboard.writeText(number).then(() => {
+        // Show toast notification
+        const toast = document.createElement('div');
+        toast.className = 'fixed bottom-4 right-4 bg-brand-accent text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in';
+        toast.innerHTML = '<i class="fa-solid fa-check mr-2"></i>Number copied!';
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        alert('Failed to copy number');
+    });
 }
 
 // ============================================

@@ -491,7 +491,13 @@ app.post('/api/check', requireAuth, async (req, res) => {
             isMetaBusiness: false,
             businessInfo: null,
             profilePicture: null,
-            lastSeen: null
+            profilePictureHD: null,
+            lastSeen: null,
+            pushName: '',
+            verifiedName: '',
+            isEnterprise: false,
+            deviceInfo: null,
+            privacySettings: {}
         };
 
         // 1. Ambil Bio/Status
@@ -538,26 +544,60 @@ app.post('/api/check', requireAuth, async (req, res) => {
             console.log(`[CHECK] Not a business account or profile unavailable: ${e.message}`);
         }
 
-        // 3. Ambil Profile Picture URL (optional)
+        // 3. Ambil Profile Picture URL (normal & HD)
         try {
             const ppUrl = await session.sock.profilePictureUrl(jid, 'image');
             responseData.profilePicture = ppUrl;
             console.log(`[CHECK] Profile picture: Found`);
+            
+            // Try to get HD version
+            try {
+                const ppUrlHD = await session.sock.profilePictureUrl(jid, 'preview');
+                responseData.profilePictureHD = ppUrlHD;
+            } catch (e) {
+                console.log(`[CHECK] HD profile picture: Not available`);
+            }
         } catch (e) {
             console.log(`[CHECK] Profile picture: Not available`);
         }
 
-        // 4. Coba ambil info tambahan dari contact
+        // 4. Ambil info tambahan dari contact
         try {
             const contact = await session.sock.getContact(jid);
             if (contact) {
-                // Some additional info might be available
-                if (contact.notify) {
-                    responseData.pushName = contact.notify;
-                }
+                if (contact.notify) responseData.pushName = contact.notify;
+                if (contact.verifiedName) responseData.verifiedName = contact.verifiedName;
+                if (contact.name) responseData.contactName = contact.name;
             }
         } catch (e) {
             console.log(`[CHECK] Contact info not available`);
+        }
+
+        // 5. Cek Enterprise/Official Business Account
+        try {
+            if (responseData.isBusiness && responseData.businessInfo) {
+                responseData.isEnterprise = responseData.businessInfo.verifiedLevel === 'official';
+            }
+        } catch (e) {
+            console.log(`[CHECK] Enterprise check failed`);
+        }
+
+        // 6. Ambil informasi presence (online/offline/typing)
+        try {
+            await session.sock.presenceSubscribe(jid);
+            // Note: presence updates come via events, not direct query
+        } catch (e) {
+            console.log(`[CHECK] Presence subscription failed`);
+        }
+
+        // 7. Cek privacy settings (best effort)
+        try {
+            responseData.privacySettings = {
+                profilePicture: responseData.profilePicture ? 'visible' : 'hidden',
+                status: responseData.bio ? 'visible' : 'hidden'
+            };
+        } catch (e) {
+            console.log(`[CHECK] Privacy settings check failed`);
         }
 
         console.log(`[CHECK] Final data for ${formattedNumber}:`, {
@@ -565,7 +605,13 @@ app.post('/api/check', requireAuth, async (req, res) => {
             hasBio: !!responseData.bio,
             isBusiness: responseData.isBusiness,
             isVerified: responseData.isVerified,
-            hasCatalog: responseData.businessInfo?.hasCatalog || false
+            isEnterprise: responseData.isEnterprise,
+            hasCatalog: responseData.businessInfo?.hasCatalog || false,
+            catalogCount: responseData.businessInfo?.catalogCount || 0,
+            hasProfilePicture: !!responseData.profilePicture,
+            hasHDPicture: !!responseData.profilePictureHD,
+            pushName: responseData.pushName || 'N/A',
+            verifiedName: responseData.verifiedName || 'N/A'
         });
 
         res.json(responseData);
