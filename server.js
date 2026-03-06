@@ -435,7 +435,7 @@ app.post('/api/check', requireAuth, async (req, res) => {
         });
     }
 
-    const { number } = req.body;
+    const { number, fastMode } = req.body;
     
     if (!number) {
         return res.status(400).json({ 
@@ -493,12 +493,14 @@ app.post('/api/check', requireAuth, async (req, res) => {
             pushName: ''
         };
 
-        // 1. Ambil Bio/Status
-        try {
-            const status = await session.sock.fetchStatus(jid);
-            responseData.bio = status?.status || '';
-        } catch (e) {
-            // Bio not available
+        // 1. Ambil Bio/Status (skip di fast mode)
+        if (!fastMode) {
+            try {
+                const status = await session.sock.fetchStatus(jid);
+                responseData.bio = status?.status || '';
+            } catch (e) {
+                // Bio not available
+            }
         }
 
         // 2. Ambil Business Profile (jika ada)
@@ -562,15 +564,17 @@ app.post('/api/check', requireAuth, async (req, res) => {
             console.log(`[CHECK] Direct query failed: ${e.message}`);
         }
 
-        // 3. Ambil Profile Picture URL
-        try {
-            const ppUrl = await session.sock.profilePictureUrl(jid, 'image');
-            responseData.profilePicture = ppUrl;
-        } catch (e) {
-            // Profile picture not available
+        // 3. Ambil Profile Picture URL (skip di fast mode)
+        if (!fastMode) {
+            try {
+                const ppUrl = await session.sock.profilePictureUrl(jid, 'image');
+                responseData.profilePicture = ppUrl;
+            } catch (e) {
+                // Profile picture not available
+            }
         }
 
-        // 4. Ambil Push Name dari store
+        // 4. Ambil Push Name dari store (cepat, tidak perlu API call)
         try {
             const contact = session.sock.store?.contacts?.[jid];
             if (contact?.notify) {

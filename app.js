@@ -3,6 +3,7 @@
 // ============================================
 
 const API_URL = 'http://localhost:3000/api';
+const FAST_MODE = true; // Set true untuk kecepatan maksimal (skip bio & photo check)
 
 // State Management
 let isLoggedIn = false;
@@ -490,7 +491,10 @@ async function processNumber(number, current, total) {
     const result = await safeFetch(`${API_URL}/check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ number })
+        body: JSON.stringify({ 
+            number,
+            fastMode: FAST_MODE 
+        })
     });
     
     if (!result.success) {
