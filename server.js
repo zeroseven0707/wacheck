@@ -346,8 +346,8 @@ async function connectWhatsApp(sessionId) {
 }
 
 // Endpoint untuk start connection
-app.post('/api/connect', requireAuth, async (req, res) => {
-    const sessionId = req.session.sessionId;
+app.post('/api/connect', async (req, res) => {
+    const sessionId = 'default-session'; // Single session
     
     try {
         console.log(`[CONNECT] Starting for session: ${sessionId.substring(0, 8)}...`);
@@ -364,8 +364,8 @@ app.post('/api/connect', requireAuth, async (req, res) => {
 });
 
 // Endpoint untuk mendapatkan QR code
-app.get('/api/qr', requireAuth, (req, res) => {
-    const sessionId = req.session.sessionId;
+app.get('/api/qr', (req, res) => {
+    const sessionId = 'default-session'; // Single session
     const session = whatsappSessions.get(sessionId);
     
     if (!session) {
@@ -390,8 +390,8 @@ app.get('/api/qr', requireAuth, (req, res) => {
 });
 
 // Endpoint untuk cek status koneksi
-app.get('/api/status', requireAuth, (req, res) => {
-    const sessionId = req.session.sessionId;
+app.get('/api/status', (req, res) => {
+    const sessionId = 'default-session'; // Single session
     const session = whatsappSessions.get(sessionId);
     
     let deviceInfo = null;
@@ -424,8 +424,8 @@ app.get('/api/status', requireAuth, (req, res) => {
 });
 
 // Endpoint untuk cek nomor WhatsApp
-app.post('/api/check', requireAuth, async (req, res) => {
-    const sessionId = req.session.sessionId;
+app.post('/api/check', async (req, res) => {
+    const sessionId = 'default-session'; // Single session
     const session = whatsappSessions.get(sessionId);
     
     if (!session || !session.isConnected || !session.sock) {

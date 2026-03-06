@@ -194,20 +194,17 @@ async function logout() {
 
 // Check auth status on load
 async function checkAuthStatus() {
-    const result = await safeFetch(`${API_URL}/auth/status`);
+    // Skip auth, langsung show dashboard
+    isLoggedIn = true;
+    currentUsername = 'User';
+    document.getElementById('displayUser').innerText = currentUsername;
     
-    if (result.success && result.data.authenticated) {
-        isLoggedIn = true;
-        currentUsername = result.data.username;
-        document.getElementById('displayUser').innerText = currentUsername;
-        
-        // Show dashboard
-        document.getElementById('authView').classList.add('hidden');
-        document.getElementById('dashboardView').classList.remove('hidden');
-        
-        // Check connection status
-        checkInitialStatus();
-    }
+    // Show dashboard
+    document.getElementById('authView').classList.add('hidden');
+    document.getElementById('dashboardView').classList.remove('hidden');
+    
+    // Check connection status
+    checkInitialStatus();
 }
 
 // ============================================
@@ -237,6 +234,14 @@ async function initiateConnection() {
     
     if (!result.success) {
         console.error('[DEBUG] Connection failed:', result.error);
+        
+        // Jika error authentication, redirect ke login
+        if (result.error === 'Not authenticated' || result.code === 'AUTH_REQUIRED') {
+            alert('Session expired. Please login again.');
+            logout();
+            return;
+        }
+        
         alert('Failed to start connection: ' + result.error);
         isConnecting = false;
         document.getElementById('connectionScan').classList.add('hidden');
