@@ -69,7 +69,7 @@ function requireAuth(req, res, next) {
 
 // ─── WhatsApp Session Manager ──────────────────────────────────────────────────
 
-async function connectWhatsApp(sessionId) {
+async function connectWhatsApp(sessionId, usePairingCode = false, phoneNumber = null) {
     const existing = waSessions.get(sessionId);
     if (existing?.isConnected) return existing;
 
@@ -87,11 +87,32 @@ async function connectWhatsApp(sessionId) {
         connectTimeoutMs: 60000,
         defaultQueryTimeoutMs: 30000,
         keepAliveIntervalMs: 25000,
-        retryRequestDelayMs: 250
+        retryRequestDelayMs: 250,
+        printQRInTerminal: false
     });
 
-    const sd = { sock, qr: null, isConnected: false, lastUpdate: Date.now() };
+    const sd = { sock, qr: null, pairingCode: null, isConnected: false, lastUpdate: Date.now() };
     waSessions.set(sessionId, sd);
+
+    // Request pairing code after socket opens (only if not already registered)
+    if (usePairingCode && phoneNumber) {
+        sock.ev.on('connection.update', async ({ connection }) => {
+            if (connection === 'open') return; // already connected
+        });
+        // Wait for socket to be ready then request code
+        setTimeout(async () => {
+            try {
+                if (!sock.authState.creds.registered) {
+                    const code = await sock.requestPairingCode(phoneNumber);
+                    sd.pairingCode = code;
+                    sd.lastUpdate = Date.now();
+                    console.log(`[WA] Pairing code for ${sessionId.slice(0,8)}: ${code}`);
+                }
+            } catch (e) {
+                console.error('[WA] Pairing code error:', e.message);
+            }
+        }, 3000);
+    }
 
     sock.ev.on('connection.update', async ({ connection, lastDisconnect, qr }) => {
         if (qr) {
@@ -209,6 +230,41 @@ app.get('/api/qr', requireAuth, (req, res) => {
     if (!sd) return res.json({ connected: false, qr: null });
     if (sd.isConnected) return res.json({ connected: true, qr: null });
     res.json({ connected: false, qr: sd.qr || null });
+});
+
+// Connect with pairing code (requires auth)
+app.post('/api/connect-code', requireAuth, async (req, res) => {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ error: 'Phone number required', code: 'MISSING_PHONE' });
+
+    const cleaned = String(phone).replace(/\D/g, '');
+    if (cleaned.length < 8 || cleaned.length > 15) {
+        return res.status(400).json({ error: 'Invalid phone number', code: 'INVALID_PHONE' });
+    }
+
+    const sessionId = req.session.sessionId;
+    // Disconnect existing session if not connected
+    const existing = waSessions.get(sessionId);
+    if (existing && !existing.isConnected) {
+        try { existing.sock?.end(); } catch (_) {}
+        waSessions.delete(sessionId);
+    }
+    if (existing?.isConnected) return res.json({ success: true, connected: true });
+
+    try {
+        await connectWhatsApp(sessionId, true, cleaned);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to start connection', code: 'CONNECTION_ERROR' });
+    }
+});
+
+// Get pairing code (requires auth)
+app.get('/api/pair-code', requireAuth, (req, res) => {
+    const sd = waSessions.get(req.session.sessionId);
+    if (!sd) return res.json({ connected: false, code: null });
+    if (sd.isConnected) return res.json({ connected: true, code: null });
+    res.json({ connected: false, code: sd.pairingCode || null });
 });
 
 // Connection status (requires auth)

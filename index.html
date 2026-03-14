@@ -276,32 +276,57 @@
                         <div class="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-500">
                             <i class="fa-brands fa-whatsapp text-2xl"></i>
                         </div>
-                        <p class="text-slate-400 text-sm mb-6">Link your WhatsApp device to start scanning.</p>
+                        <p class="text-slate-400 text-sm mb-4">Link your WhatsApp device to start scanning.</p>
+                        <!-- Method Toggle -->
+                        <div class="flex rounded-xl overflow-hidden border border-slate-700 mb-4">
+                            <button id="btnModeQR" onclick="setPairMode('qr')" class="flex-1 py-2 text-xs font-medium bg-brand-accent text-white transition-colors">
+                                <i class="fa-solid fa-qrcode mr-1"></i> QR Code
+                            </button>
+                            <button id="btnModeCode" onclick="setPairMode('code')" class="flex-1 py-2 text-xs font-medium bg-slate-800 text-slate-400 hover:text-white transition-colors">
+                                <i class="fa-solid fa-key mr-1"></i> Pairing Code
+                            </button>
+                        </div>
+                        <!-- Phone input (code mode only) -->
+                        <div id="phoneInputWrap" class="hidden mb-4">
+                            <input id="pairPhone" type="tel" placeholder="e.g. 628123456789" class="glass-input w-full rounded-xl px-4 py-2 text-sm text-slate-300 focus:text-white text-center" />
+                            <p class="text-[10px] text-slate-500 mt-1">Enter your WhatsApp number with country code</p>
+                        </div>
                         <button onclick="initiateConnection()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-brand-accent text-white py-3 rounded-xl transition-all flex items-center justify-center gap-2 group">
-                            <i class="fa-solid fa-qrcode group-hover:scale-110 transition-transform"></i> Pair Device
+                            <i class="fa-solid fa-qrcode group-hover:scale-110 transition-transform" id="pairBtnIcon"></i> <span id="pairBtnText">Pair Device</span>
                         </button>
                     </div>
 
                     <div id="connectionScan" class="hidden py-2">
-                        <div class="relative w-48 h-48 bg-white rounded-xl mx-auto mb-4 overflow-hidden flex items-center justify-center">
-                            <!-- Simulated QR -->
-                            <div class="absolute inset-0 grid grid-cols-6 grid-rows-6 gap-1 p-4 opacity-80">
-                                <div class="col-span-2 row-span-2 border-4 border-black"></div>
-                                <div class="col-span-2 row-span-2 border-4 border-black col-start-5"></div>
-                                <div class="col-span-2 row-span-2 border-4 border-black row-start-5"></div>
-                                <!-- Random noise -->
-                                <div class="col-start-3 row-start-2 bg-black"></div>
-                                <div class="col-start-4 row-start-3 bg-black"></div>
-                                <div class="col-start-2 row-start-4 bg-black"></div>
-                                <div class="col-start-5 row-start-5 bg-black"></div>
+                        <!-- QR view -->
+                        <div id="qrView">
+                            <div class="relative w-48 h-48 bg-white rounded-xl mx-auto mb-4 overflow-hidden flex items-center justify-center">
+                                <!-- Simulated QR -->
+                                <div class="absolute inset-0 grid grid-cols-6 grid-rows-6 gap-1 p-4 opacity-80">
+                                    <div class="col-span-2 row-span-2 border-4 border-black"></div>
+                                    <div class="col-span-2 row-span-2 border-4 border-black col-start-5"></div>
+                                    <div class="col-span-2 row-span-2 border-4 border-black row-start-5"></div>
+                                    <!-- Random noise -->
+                                    <div class="col-start-3 row-start-2 bg-black"></div>
+                                    <div class="col-start-4 row-start-3 bg-black"></div>
+                                    <div class="col-start-2 row-start-4 bg-black"></div>
+                                    <div class="col-start-5 row-start-5 bg-black"></div>
+                                </div>
+                                <div class="scan-line"></div>
+                                <div class="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-[2px] z-10" id="qrLoading">
+                                    <div class="loader"></div>
+                                </div>
                             </div>
-                            <div class="scan-line"></div>
-                            <div class="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-[2px] z-10" id="qrLoading">
+                            <p class="text-center text-xs text-brand-accent animate-pulse">Waiting for scan...</p>
+                            <p class="text-center text-[10px] text-slate-500 mt-2">Open WhatsApp &rarr; Settings &rarr; Linked Devices</p>
+                        </div>
+                        <!-- Pairing Code view -->
+                        <div id="codeView" class="hidden text-center">
+                            <p class="text-xs text-slate-400 mb-3">Enter this code in WhatsApp</p>
+                            <div id="pairingCodeDisplay" class="text-3xl font-display font-bold tracking-[0.3em] text-brand-accent bg-slate-900/60 border border-brand-accent/30 rounded-xl py-4 px-2 mb-3 min-h-[64px] flex items-center justify-center">
                                 <div class="loader"></div>
                             </div>
+                            <p class="text-[10px] text-slate-500">Open WhatsApp &rarr; Settings &rarr; Linked Devices &rarr; Link with phone number</p>
                         </div>
-                        <p class="text-center text-xs text-brand-accent animate-pulse">Waiting for scan...</p>
-                        <p class="text-center text-[10px] text-slate-500 mt-2">Open WhatsApp &rarr; Settings &rarr; Linked Devices</p>
                     </div>
 
                     <div id="connectionActive" class="hidden">

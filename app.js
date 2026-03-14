@@ -11,6 +11,7 @@ const state = {
     isScanning: false,
     isConnecting: false,
     authMode: 'login',
+    pairMode: 'qr', // 'qr' or 'code'
     username: '',
     connectionTimer: null,
     scanTimer: null,
@@ -140,12 +141,62 @@ async function checkAuthStatus() {
 }
 
 // ─── Connection ────────────────────────────────────────────────────────────────
+
+function setPairMode(mode) {
+    state.pairMode = mode;
+    const isCode = mode === 'code';
+    $('btnModeQR').className = `flex-1 py-2 text-xs font-medium transition-colors ${!isCode ? 'bg-brand-accent text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`;
+    $('btnModeCode').className = `flex-1 py-2 text-xs font-medium transition-colors ${isCode ? 'bg-brand-accent text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`;
+    if (isCode) {
+        show('phoneInputWrap');
+        $('pairBtnIcon').className = 'fa-solid fa-key group-hover:scale-110 transition-transform';
+        $('pairBtnText').textContent = 'Get Pairing Code';
+    } else {
+        hide('phoneInputWrap');
+        $('pairBtnIcon').className = 'fa-solid fa-qrcode group-hover:scale-110 transition-transform';
+        $('pairBtnText').textContent = 'Pair Device';
+    }
+}
+
 async function initiateConnection() {
     if (state.isConnecting) return;
-    state.isConnecting = true;
 
+    if (state.pairMode === 'code') {
+        const phone = $('pairPhone')?.value?.trim().replace(/\D/g, '');
+        if (!phone || phone.length < 8) {
+            showToast('Enter a valid phone number with country code');
+            return;
+        }
+        state.isConnecting = true;
+        hide('connectionIdle');
+        show('connectionScan');
+        hide('qrView');
+        show('codeView');
+
+        const r = await api('/connect-code', { method: 'POST', body: JSON.stringify({ phone }) });
+        if (!r.ok) {
+            if (r.error === 'Not authenticated') { logout(); return; }
+            showToast('Failed: ' + r.error);
+            state.isConnecting = false;
+            hide('connectionScan');
+            show('connectionIdle');
+            return;
+        }
+
+        if (!state.connectionTimer) {
+            state.connectionTimer = setInterval(checkConnection, 2000);
+        }
+        pollPairingCode();
+        checkConnection();
+        return;
+    }
+
+    // QR mode
+    state.isConnecting = true;
     hide('connectionIdle');
     show('connectionScan');
+    show('qrView');
+    hide('codeView');
 
     const r = await api('/connect', { method: 'POST' });
     if (!r.ok) {
@@ -191,7 +242,7 @@ async function checkConnection() {
 
         gsap.from('#connectionActive > div', { x: -20, opacity: 0, duration: 0.4, stagger: 0.1 });
     } else if (state.isConnecting) {
-        pollQR();
+        if (state.pairMode === 'qr') pollQR();
     }
 }
 
@@ -199,9 +250,24 @@ async function pollQR() {
     const r = await api('/qr');
     if (!r.ok || !r.data.qr) return;
 
-    const container = document.querySelector('#connectionScan .relative.w-48');
+    const container = document.querySelector('#qrView .relative.w-48');
     if (container) {
         container.innerHTML = `<img src="${r.data.qr}" alt="QR Code" class="w-full h-full object-contain rounded-xl"><div class="scan-line"></div>`;
+    }
+}
+
+async function pollPairingCode() {
+    const r = await api('/pair-code');
+    if (!r.ok) return;
+    if (r.data.connected) return; // already connected, checkConnection will handle
+    const el = $('pairingCodeDisplay');
+    if (el && r.data.code) {
+        // Format as XXXX-XXXX
+        const c = r.data.code.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+        el.textContent = c.length === 8 ? `${c.slice(0,4)}-${c.slice(4)}` : c;
+    } else if (el && !r.data.code) {
+        // Still waiting, retry
+        setTimeout(pollPairingCode, 2000);
     }
 }
 
