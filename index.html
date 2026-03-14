@@ -161,6 +161,18 @@
                 radial-gradient(circle at 15% 50%, rgba(37, 211, 102, 0.08), transparent 25%),
                 radial-gradient(circle at 85% 30%, rgba(52, 183, 241, 0.08), transparent 25%);
         }
+
+        /* Badge utility */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 700;
+            border: 1px solid transparent;
+        }
     </style>
 </head>
 <body class="antialiased min-h-screen flex flex-col items-center justify-center p-4 md:p-8">
@@ -208,7 +220,7 @@
                 </button>
             </form>
         </div>
-        <p class="text-center text-slate-600 text-xs mt-8">© 3 2024 Bio Checker Pro. Secure & Encrypted.</p>
+        <p class="text-center text-slate-600 text-xs mt-8">© 2024 Bio Checker Pro. Secure & Encrypted.</p>
     </div>
 
     <!-- MAIN DASHBOARD VIEW -->
@@ -424,7 +436,7 @@
                     
                     <div class="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar" id="resultsList">
                         <!-- Empty State -->
-                        <div class="h-full flex flex-col items-center justify-center text-slate-600 opacity-60">
+                        <div class="empty-state h-full flex flex-col items-center justify-center text-slate-600 opacity-60">
                             <i class="fa-solid fa-clipboard-list text-4xl mb-3"></i>
                             <p>No data to display</p>
                         </div>
@@ -436,16 +448,9 @@
     </div>
 
     <script>
-        // Intro Animation (keep this for initial page load)
         window.addEventListener('load', () => {
             if (typeof gsap !== 'undefined') {
-                gsap.from(".animate-fade-in-down > *", {
-                    y: 30,
-                    opacity: 0,
-                    duration: 0.8,
-                    stagger: 0.1,
-                    ease: "power3.out"
-                });
+                gsap.from('.animate-fade-in-down > *', { y: 30, opacity: 0, duration: 0.8, stagger: 0.1, ease: 'power3.out' });
             }
         });
     </script>
